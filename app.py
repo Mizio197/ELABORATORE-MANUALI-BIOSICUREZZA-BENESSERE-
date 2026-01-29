@@ -5,47 +5,47 @@ import os
 from PIL import Image
 import tempfile
 
-# --- FUNZIONE PULIZIA TESTO (Preventiva per caratteri Word) ---
+# --- CONFIGURAZIONE PAGINA ---
+st.set_page_config(page_title="R-ADVISOR Generator", page_icon="📄", layout="centered")
+
+# --- FUNZIONE PULIZIA TESTO ---
 def clean_text(text):
     if text is None: return ""
     text = str(text)
+    
+    # 1. Sostituzioni caratteri Word
     replacements = {
         u'\u2018': "'", u'\u2019': "'", u'\u201c': '"', u'\u201d': '"',
-        u'\u2013': '-', u'\u2014': '-', u'\u2026': '...', u'\u00B0': ' gradi ',
-        u'\u20ac': 'EUR', u'’': "'", u'“': '"', u'”': '"'
+        u'\u2013': '-', u'\u2014': '-', u'\u2026': '...', 
+        u'\u00B0': ' gradi ', u'\u20ac': 'EUR', 
+        u'’': "'", u'“': '"', u'”': '"', u'–': '-'
     }
     for key, value in replacements.items():
         text = text.replace(key, value)
     
-    # Forza la codifica in Latin-1 ignorando caratteri impossibili
-    return text.encode('latin-1', 'ignore').decode('latin-1')
+    # 2. Forza Latin-1 (sostituisce caratteri impossibili con ?)
+    return text.encode('latin-1', 'replace').decode('latin-1')
 
-# --- FUNZIONE SALVA IMMAGINE SICURA ---
-# Questa funzione converte qualsiasi immagine in JPG temporaneo per evitare errori di trasparenza
+# --- FUNZIONE IMMAGINE SICURA ---
 def get_safe_image_path(original_path):
     if not os.path.exists(original_path):
         return None
     try:
         img = Image.open(original_path)
-        # Se ha trasparenza (RGBA), converti in bianco (RGB)
+        # Rimuovi trasparenza convertendo in RGB
         if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
-            alpha = img.convert('RGBA').split()[-1]
             bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img, mask=alpha)
+            bg.paste(img, mask=img.convert('RGBA').split()[-1])
             img = bg
         else:
             img = img.convert('RGB')
         
-        # Salva in un file temporaneo
+        # Salva temporaneamente
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             img.save(tmp, format='JPEG', quality=90)
             return tmp.name
     except Exception as e:
-        print(f"Errore conversione immagine {original_path}: {e}")
         return None
-
-# --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="R-ADVISOR Generator", page_icon="📄", layout="centered")
 
 # --- CLASSE PDF ---
 class PDF(FPDF):
@@ -54,15 +54,11 @@ class PDF(FPDF):
         self.client_name = clean_text(client_name)
 
     def header(self):
-        # Gestione Logo Sicura
-        logo_path = "assets/logo.png" # Assicurati che su GitHub sia minuscolo
-        safe_logo = get_safe_image_path(logo_path)
-        
+        safe_logo = get_safe_image_path("assets/logo.png")
         if safe_logo:
             try:
                 self.image(safe_logo, x=160, y=10, w=40)
-            except:
-                pass 
+            except: pass
         self.ln(20)
 
     def footer(self):
@@ -81,28 +77,27 @@ class PDF(FPDF):
         self.multi_cell(0, 6, clean_text(body), align='J') 
         self.ln()
 
-# --- DEFINIZIONE TESTI ---
-# (Uso i testi che ho estratto precedentemente)
+# --- DEFINIZIONE TESTI INTEGRALI ---
 
-POS_001_TEXT = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni (virus, batteri, parassiti) all'interno dell'unità epidemiologica tramite vettori meccanici (veicoli, persone, attrezzature).
+POS_001_TEXT = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni (virus, batteri, parassiti) all'interno dell'unita' epidemiologica tramite vettori meccanici (veicoli, persone, attrezzature).
 Riferimenti Normativi: Reg. UE 2016/429; Liste di controllo ClassyFarm/SNQBA.
 
 1. Classificazione del Rischio Visitatori
-Nelle more dell'analisi del rischio condotta per garantire una migliore efficacia delle attività di gestione ai fini della biosicurezza, si è provveduto a classificare in categorie gli stessi in differenti categorie:
+Nelle more dell'analisi del rischio condotta per garantire una migliore efficacia delle attivita' di gestione ai fini della biosicurezza, si e' provveduto a classificare in categorie gli stessi in differenti categorie:
 
 Categoria A: Visitatori ad Alto Rischio (Professionali)
-Soggetti che, per la natura della loro attività, frequentano regolarmente più allevamenti o hanno contatti diretti con animali.
+Soggetti che, per la natura della loro attivita', frequentano regolarmente piu' allevamenti o hanno contatti diretti con animali.
 Chi sono: Medici Veterinari, tecnici fecondatori, trasportatori di animali vivi, trasportatori di mangime (se entrano in zona pulita), tecnici manutentori di impianti zootecnici, pareggiatori, tosapecore, consulenti nutrizionisti.
-Requisito specifico: Devono dichiarare preliminarmente all'accesso eventuali contatto con animali infetti, animali di nuova introduzione in altri allevamenti e, più in generale, altri fattori di rischio, anche solo potenziale. Onere dell'operatore è la valutazione specifica di ogni singola dichiarazione di rischio.
+Requisito specifico: Devono dichiarare preliminarmente all'accesso eventuali contatto con animali infetti, animali di nuova introduzione in altri allevamenti e, piu' in generale, altri fattori di rischio, anche solo potenziale. Onere dell'operatore e' la valutazione specifica di ogni singola dichiarazione di rischio.
 
 Categoria B: Visitatori a Medio/Basso Rischio
 Soggetti che non hanno contatti frequenti con altri allevamenti o che non accederanno alle zone di stabulazione diretta.
 Chi sono: Fornitori di servizi vari (elettricisti, idraulici non specializzati in zootecnia), rappresentanti commerciali, visitatori istituzionali, scolaresche (se ammesse).
 
 2. Procedura di Accesso (Zona Filtro)
-L'accesso all'allevamento è consentito esclusivamente attraverso l'unico varco d'ingresso identificato e segnalato.
+L'accesso all'allevamento e' consentito esclusivamente attraverso l'unico varco d'ingresso identificato e segnalato.
 Tutti i visitatori, indipendentemente dalla categoria, devono attenersi alla seguente procedura:
-a) Arrivo e Parcheggio: Lasciare il proprio automezzo nell'area di parcheggio esterna ("Zona Sporca"), salvo specifica autorizzazione per carico/scarico materiali pesanti (in tal caso il mezzo dovrà essere disinfettato alle ruote e passaruota).
+a) Arrivo e Parcheggio: Lasciare il proprio automezzo nell'area di parcheggio esterna ("Zona Sporca"), salvo specifica autorizzazione per carico/scarico materiali pesanti (in tal caso il mezzo dovra' essere disinfettato alle ruote e passaruota).
 b) Registrazione: Compilare il "Registro Visitatori" indicando:
 - Nome e Cognome.
 - Azienda/Ente di appartenenza.
@@ -118,24 +113,24 @@ Dotazione Minima:
 
 4. Comportamento all'interno dell'Allevamento
 Accompagnamento: I visitatori non possono mai muoversi liberamente in azienda. Devono essere costantemente accompagnati dal titolare o da un delegato.
-Percorsi: Rispettare rigorosamente il flusso "Marcia in Avanti" (dal pulito allo sporco / dagli animali più giovani ai più anziani), salvo diversa indicazione veterinaria.
+Percorsi: Rispettare rigorosamente il flusso "Marcia in Avanti" (dal pulito allo sporco / dagli animali piu' giovani ai piu' anziani), salvo diversa indicazione veterinaria.
 Divieti:
 - Vietato toccare gli animali se non strettamente necessario e autorizzato.
 - Vietato introdurre cibo o bevande nelle aree di stabulazione.
 - Vietato introdurre attrezzature personali (cellulari, tablet) se non protette o precedentemente disinfettate con salviette imbevute.
 
 5. Cartellonistica
-All'ingresso della proprietà (cancello principale) e all'ingresso della zona filtro, è stato predisposto ed affisso in modo ben visibile il seguente cartello:
+All'ingresso della proprieta' (cancello principale) e all'ingresso della zona filtro, e' stato predisposto ed affisso in modo ben visibile il seguente cartello:
 ATTENZIONE - ZONA A BIOSICUREZZA CONTROLLATA
-È SEVERAMENTE VIETATO L'INGRESSO AI NON AUTORIZZATI
-Per accedere a questa struttura è OBBLIGATORIO:
+E' SEVERAMENTE VIETATO L'INGRESSO AI NON AUTORIZZATI
+Per accedere a questa struttura e' OBBLIGATORIO:
 - Annunciare la propria presenza e attendere il personale.
 - Non entrare senza autorizzazione.
 - Registrare il proprio ingresso nell'apposito modulo.
 - Indossare i DPI forniti dall'azienda (calzari, camice, cuffia).
 - Sottoporre gli automezzi autorizzati a disinfezione."""
 
-POS_002_TEXT = """Scopo: Definire le modalità operative per l'introduzione di nuovi capi (acclimatamento e controllo sanitario) e per la gestione di animali residenti che manifestano segni clinici di malattia infettiva, al fine di garantire la compartimentazione sanitaria.
+POS_002_TEXT = """Scopo: Definire le modalita' operative per l'introduzione di nuovi capi (acclimatamento e controllo sanitario) e per la gestione di animali residenti che manifestano segni clinici di malattia infettiva, al fine di garantire la compartimentazione sanitaria.
 Riferimenti: Reg. UE 2016/429 (Animal Health Law); Manuale ClassyFarm (Area C - Biosicurezza); Disciplinare SNQBA.
 
 1. Definizione e Requisiti delle Aree
@@ -151,13 +146,13 @@ Caratteristiche:
 Si tratta di area dedicata a capi residenti (adulti o vitelli) che manifestano patologie (es. mastiti contagiose, zoppie gravi infette, sindromi respiratorie, diarree neonatali). Garantisce il benessere dell'animale malato (lettiera pulita, asciutta, spazio adeguato, facile accesso all'acqua).
 
 2. Procedura per Nuovi Ingressi (Quarantena)
-Questa procedura si applica a qualsiasi animale proveniente dall'esterno, prescindendo dall'età.
+Questa procedura si applica a qualsiasi animale proveniente dall'esterno, prescindendo dall'eta'.
 2.1 Fase Pre-Ingresso
 Si provvede a verifica dello stato sanitario dell'allevamento di provenienza (tramite Modello 4 e attestazioni sanitarie).
 
 2.2 Gestione Periodo di Quarantena
 Durata: Minimo 21 giorni (o diverso periodo indicato dal Veterinario Aziendale).
-Attività:
+Attivita':
 - Isolamento completo dal resto della mandria.
 - Osservazione quotidiana per rilevare segni clinici.
 - Esecuzione dei prelievi ematici/tamponi previsti dai piani di risanamento o concordati con il Veterinario.
@@ -171,7 +166,7 @@ Gestione:
 
 4. Pulizia e Vuoto Sanitario
 4.1 Pulizia Box
-Ogni volta che un animale (o un gruppo omogeneo) in quarantena/isolamento viene spostato in stalla o esce (guarigione/macellazione), il box è sottoposto alle seguenti attività:
+Ogni volta che un animale (o un gruppo omogeneo) in quarantena/isolamento viene spostato in stalla o esce (guarigione/macellazione), il box e' sottoposto alle seguenti attivita':
 - Svuotato completamente dalla lettiera.
 - Lavato con idropulitrice (acqua calda se possibile) per rimuovere il biofilm.
 - Disinfettato con prodotto virucida/battericida approvato.
@@ -181,34 +176,34 @@ Ogni volta che un animale (o un gruppo omogeneo) in quarantena/isolamento viene 
 La lettiera rimossa dall'area quarantena/isolamento NON viene distribuita direttamente sui campi o mischiata subito al letame "maturo".
 Tale lettiera viene stoccata in un punto dedicato della concimaia per subire un processo di biotermizzazione (compostaggio naturale che raggiunge >60 gradi C) per inattivare virus e batteri prima dello spandimento agronomico.
 
-5. Registrazione e Tracciabilità
+5. Registrazione e Tracciabilita'
 Per ogni animale in Quarantena/Isolamento si provvede a compilare la Scheda di Stalla/Cartella Clinica contenente:
 - ID Animale.
 - Data ingresso in isolamento e motivo.
-- Trattamenti farmacologici effettuati (data, farmaco, quantità, tempi di sospensione) - Rif. Registro Trattamenti Elettronico.
+- Trattamenti farmacologici effettuati (data, farmaco, quantita', tempi di sospensione) - Rif. Registro Trattamenti Elettronico.
 - Esiti esami di laboratorio.
 - Data di fine isolamento/esito (guarigione, macellazione, decesso)."""
 
-POS_004_TEXT = """Scopo: Descrivere le modalità operative adottate dall'azienda per garantire il rispetto dei fabbisogni fisiologici ed etologici dei bovini in tutte le fasi di allevamento (vitelli, manze, vacche in lattazione e asciutta), in conformità alla normativa vigente e ai requisiti del Sistema di Qualità Nazionale per il Benessere Animale (SNQBA).
+POS_004_TEXT = """Scopo: Descrivere le modalita' operative adottate dall'azienda per garantire il rispetto dei fabbisogni fisiologici ed etologici dei bovini in tutte le fasi di allevamento (vitelli, manze, vacche in lattazione e asciutta), in conformita' alla normativa vigente e ai requisiti del Sistema di Qualita' Nazionale per il Benessere Animale (SNQBA).
 Riferimenti: D.Lgs 146/2001; D.Lgs 126/2011; Manuale ClassyFarm (Area A - Management e Personale, Area B - Strutture).
 
 1. Formazione e Competenza del Personale
-La gestione degli animali è affidata esclusivamente a personale qualificato.
-Si provvede affinché tutti gli operatori ricevano una formazione adeguata, sia mediante partecipazione a corsi che mediante affiancamento con il Veterinario Aziendale, sulle corrette modalità di manipolazione, sul riconoscimento dei segni di malattia e sui principi di biosicurezza.
-È garantita l'ispezione di tutti gli animali presenti in allevamento almeno due volte al giorno (mattina e sera). Qualora si riscontrino animali feriti o con segni di sofferenza, si procede all'immediato isolamento e trattamento secondo i protocolli sanitari concordati con il Veterinario.
+La gestione degli animali e' affidata esclusivamente a personale qualificato.
+Si provvede affinche' tutti gli operatori ricevano una formazione adeguata, sia mediante partecipazione a corsi che mediante affiancamento con il Veterinario Aziendale, sulle corrette modalita' di manipolazione, sul riconoscimento dei segni di malattia e sui principi di biosicurezza.
+E' garantita l'ispezione di tutti gli animali presenti in allevamento almeno due volte al giorno (mattina e sera). Qualora si riscontrino animali feriti o con segni di sofferenza, si procede all'immediato isolamento e trattamento secondo i protocolli sanitari concordati con il Veterinario.
 
 2. Gestione della Vitellaia (0-6 Mesi)
 2.1 Colostratura e Alimentazione
-Si provvede alla somministrazione di colostro di alta qualità (verificato con rifrattometro Brix >22%) entro le prime 6 ore di vita, in quantità pari al 10% del peso vivo (circa 3-4 litri).
-L'acqua è sempre a disposizione, pulita e fresca, fin dalla prima settimana di vita.
+Si provvede alla somministrazione di colostro di alta qualita' (verificato con rifrattometro Brix >22%) entro le prime 6 ore di vita, in quantita' pari al 10% del peso vivo (circa 3-4 litri).
+L'acqua e' sempre a disposizione, pulita e fresca, fin dalla prima settimana di vita.
 2.2 Alloggiamento
 I vitelli sono stabulati in box singoli (nel rispetto delle dimensioni di legge) fino a massimo 8 settimane di vita. Le pareti dei box sono forate per consentire il contatto visivo e tattile con i consimili (benessere sociale). Dopo le 8 settimane, i vitelli vengono spostati in box multipli.
 
 3. Pratiche Zootecniche e Mutilazioni
-In conformità ai requisiti SNQBA, si attuano procedure per minimizzare il dolore.
+In conformita' ai requisiti SNQBA, si attuano procedure per minimizzare il dolore.
 Decornazione: Si provvede alla decornazione dei vitelli entro la 3a-4a settimana di vita (bottone corneo mobile). L'intervento viene effettuato mediante cauterizzazione termica, previo utilizzo di anestesia locale (blocco del nervo cornuale) e somministrazione di analgesico/antinfiammatorio sistemico (FANS) per la gestione del dolore post-operatorio.
-Code: È vietato il taglio della coda (caudectomia).
-Movimentazione: È vietato l'uso di pungoli elettrici, bastoni o calci per spostare gli animali. Si utilizzano pannelli di spinta o movimenti corporei che sfruttano il comportamento naturale della mandria.
+Code: E' vietato il taglio della coda (caudectomia).
+Movimentazione: E' vietato l'uso di pungoli elettrici, bastoni o calci per spostare gli animali. Si utilizzano pannelli di spinta o movimenti corporei che sfruttano il comportamento naturale della mandria.
 
 4. Monitoraggio Indicatori Animal-Based
 Si provvede al monitoraggio periodico (es. trimestrale o semestrale tramite ClassyFarm) dei seguenti indicatori di benessere direttamente sugli animali:
@@ -218,12 +213,12 @@ Si provvede al monitoraggio periodico (es. trimestrale o semestrale tramite Clas
 - Lesioni: Verifica assenza di lesioni cutanee, al garretto o al collo (indicatori di strutture inadeguate).
 
 5. Gestione delle Emergenze
-L'azienda è dotata di gruppo elettrogeno a riarmo automatico per garantire il funzionamento degli impianti di mungitura, abbeverata e ventilazione anche in caso di blackout elettrico.
-È presente un sistema di allarme (SMS/telefonico) che segnala tempestivamente guasti critici."""
+L'azienda e' dotata di gruppo elettrogeno a riarmo automatico per garantire il funzionamento degli impianti di mungitura, abbeverata e ventilazione anche in caso di blackout elettrico.
+E' presente un sistema di allarme (SMS/telefonico) che segnala tempestivamente guasti critici."""
 
 # --- INTERFACCIA UTENTE ---
 st.title("R-ADVISOR-APP | Generatore Manuali")
-st.success("Sistema Pronto. Compila i dati qui sotto.")
+st.success("Sistema Pronto e Attivo.")
 
 with st.form("data_entry_form"):
     st.subheader("1. Anagrafica Azienda")
@@ -257,13 +252,13 @@ if submitted:
         st.error("Inserire almeno la Ragione Sociale per procedere.")
     else:
         # Costruzione POS 003 DINAMICO
-        pos_003_text = f"""Scopo: Descrivere le misure di difesa passiva (Pest Proofing) e attiva (Pest Control) messe in atto dall'azienda per controllare la presenza di roditori, insetti e altri animali indesiderati, vettori di patologie e minaccia per la salubrità dei mangimi e il benessere animale.
+        pos_003_text = f"""Scopo: Descrivere le misure di difesa passiva (Pest Proofing) e attiva (Pest Control) messe in atto dall'azienda per controllare la presenza di roditori, insetti e altri animali indesiderati, vettori di patologie e minaccia per la salubrita' dei mangimi e il benessere animale.
 Riferimenti: Reg. (UE) 852/2004; Reg. (UE) 2016/429; SNQBA / ClassyFarm (Area Biosicurezza).
 
-1. Responsabilità e Gestione del Servizio
-La gestione del piano di lotta agli infestanti è suddivisa tra il personale interno e una ditta specializzata esterna.
+1. Responsabilita' e Gestione del Servizio
+La gestione del piano di lotta agli infestanti e' suddivisa tra il personale interno e una ditta specializzata esterna.
 Responsabile Biosicurezza (Interno): Sovrintende alla corretta applicazione delle misure di difesa passiva, segnala tempestivamente anomalie e archivia la documentazione.
-Ditta Specializzata (Esterno): Il servizio di monitoraggio e lotta attiva è affidato alla ditta STUDIO SUMMIT SRL (Iscritta ANID - Associazione Nazionale Imprese Disinfestazione). La ditta possiede i requisiti tecnico-professionali per la gestione dei presidi e l'uso di biocidi conformi alla normativa vigente.
+Ditta Specializzata (Esterno): Il servizio di monitoraggio e lotta attiva e' affidato alla ditta STUDIO SUMMIT SRL (Iscritta ANID - Associazione Nazionale Imprese Disinfestazione). La ditta possiede i requisiti tecnico-professionali per la gestione dei presidi e l'uso di biocidi conformi alla normativa vigente.
 
 2. Pest Proofing (Difesa Passiva e Prevenzione)
 L'azienda attua sistematicamente misure strutturali e comportamentali volte a impedire l'ingresso e la nidificazione degli infestanti (esclusione). Nello specifico:
@@ -274,9 +269,9 @@ L'azienda attua sistematicamente misure strutturali e comportamentali volte a im
 - Si sigillano fori di passaggio tubature/cavi nelle murature.
 
 2.2 Gestione Ambientale Esterna
-- La vegetazione perimetrale è mantenuta rasata per non offrire rifugio ai roditori.
+- La vegetazione perimetrale e' mantenuta rasata per non offrire rifugio ai roditori.
 - Si evita l'accumulo di materiali di scarto, rottami o rifiuti a ridosso delle pareti esterne delle stalle.
-- La zona di stoccaggio mangimi è mantenuta pulita da spandimenti accidentali.
+- La zona di stoccaggio mangimi e' mantenuta pulita da spandimenti accidentali.
 
 3. Pest Control (Lotta Attiva e Monitoraggio)
 Il piano di monitoraggio prevede l'installazione di postazioni fisse (erogatori di sicurezza) numerate e riportate in planimetria.
@@ -288,13 +283,13 @@ Frequenza Interventi: Il monitoraggio viene effettuato da STUDIO SUMMIT SRL con 
 In ogni caso, il numero di passaggi vengono modulati dalla ditta fornitrice in relazione al livello di infestazione effettivamente riscontrato durante i monitoraggi (soglia di tolleranza).
 
 4. Gestione Documentale e Planimetria
-Tutta l'attività di Pest Management è tracciata e documentata per garantire la rintracciabilità delle operazioni.
-Planimetria Dispositivi: È presente e aggiornata una mappa planimetrica dell'azienda (Allegato PM-01) che identifica univocamente la posizione di ogni erogatore (numerati progressivamente).
+Tutta l'attivita' di Pest Management e' tracciata e documentata per garantire la rintracciabilita' delle operazioni.
+Planimetria Dispositivi: E' presente e aggiornata una mappa planimetrica dell'azienda (Allegato PM-01) che identifica univocamente la posizione di ogni erogatore (numerati progressivamente).
 Report di Intervento: Al termine di ogni visita, STUDIO SUMMIT SRL rilascia un rapporto di intervento che riporta:
 - Data e ora dell'intervento.
 - Prodotti utilizzati (nome commerciale, principio attivo, n. registrazione, lotto).
 - Esito del monitoraggio per ogni singola postazione (es. consumo: nullo, parziale, totale).
-- Eventuali "Non Conformità" rilevate o azioni correttive suggerite.
+- Eventuali "Non Conformita'" rilevate o azioni correttive suggerite.
 Schede Tecniche e di Sicurezza: Sono archiviate e disponibili le SDS (Schede di Sicurezza) aggiornate di tutti i formulati chimici impiegati in azienda.
 
 5. Procedura di Emergenza (Avvistamento Interno)
@@ -371,24 +366,16 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             safe_cartello = get_safe_image_path("assets/cartello.jpg")
             if safe_cartello:
                 pdf.image(safe_cartello, x=30, w=150)
-            else:
-                pdf.set_font("Helvetica", "I", 10)
-                pdf.cell(0, 10, "Immagine cartello non trovata (controlla nome file)", ln=True)
             
             pdf.add_page()
             pdf.cell(0, 10, "ALLEGATO 2: PLANIMETRIA PEST CONTROL", ln=True)
             if planimetria_file is not None:
-                # Salva il file caricato
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_up:
                     tmp_up.write(planimetria_file.read())
                     tmp_up_path = tmp_up.name
-                
-                # Converti in sicuro
                 safe_plan = get_safe_image_path(tmp_up_path)
                 if safe_plan:
                     pdf.image(safe_plan, x=20, w=170)
-                
-                # Pulizia
                 try: os.remove(tmp_up_path)
                 except: pass
             else:
@@ -402,12 +389,10 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             safe_bcs = get_safe_image_path("assets/bcs.jpg")
             if safe_bcs:
                 pdf.image(safe_bcs, x=20, w=170)
-            else:
-                pdf.set_font("Helvetica", "I", 10)
-                pdf.cell(0, 10, "Immagine BCS non trovata", ln=True)
 
-            # Output PDF
-            pdf_content = pdf.output(dest='S').encode('latin-1', 'replace')
+            # --- GENERAZIONE OUTPUT DEFINITIVA ---
+            # fpdf2 restituisce già un bytearray, lo passiamo direttamente.
+            pdf_content = pdf.output(dest='S')
             
             st.success("Manuale generato con successo!")
             filename = f"Manuale_Biosicurezza_{ragione_sociale.replace(' ', '_')}.pdf"
