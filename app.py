@@ -3,341 +3,311 @@ from fpdf import FPDF
 from fpdf.fonts import FontFace
 from fpdf.enums import XPos, YPos
 import os
+import io
 
-# --- CONFIGURAZIONE PAGINA STREAMLIT ---
+# --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="R-ADVISOR | Generatore Manuali", page_icon="📋", layout="wide")
 
-# --- CLASSE PDF AVANZATA (Stile Relazione Tecnica) ---
+# --- CLASSE PDF STYLE RELAZIONE ---
 class PDF(FPDF):
-    def __init__(self, client_name, reason_social):
+    def __init__(self, client_name):
         super().__init__()
         self.client_name = client_name
-        self.reason_social = reason_social
         
     def header(self):
-        # Logo Studio Summit a Destra (Alto)
+        # Logo Studio Summit a Destra
         if os.path.exists("assets/logo.png"):
-            # Posizionato a destra, larghezza 45mm
             self.image("assets/logo.png", x=155, y=10, w=45)
-        
-        # Linea separatrice header (opzionale, per pulizia grafica)
-        self.set_y(30)
-        # self.line(10, 30, 200, 30) 
+        # Linea sottile sotto l'intestazione per pulizia
+        self.set_draw_color(200, 200, 200)
+        self.line(10, 35, 200, 35)
+        self.ln(30)
 
     def footer(self):
         self.set_y(-15)
         self.set_font("Helvetica", "I", 8)
-        self.set_text_color(100, 100, 100) # Grigio scuro
-        
-        # Testo Piè di pagina
-        footer_text = f"ELABORATO CON R-ADVISOR-APP da STUDIO SUMMIT SRL per {self.reason_social}"
-        page_num = f"Pagina {self.page_no()} di {{nb}}"
-        
-        # Cella sinistra (Testo)
+        self.set_text_color(100, 100, 100)
+        # Testo a sinistra
+        footer_text = f"ELABORATO CON R-ADVISOR-APP da STUDIO SUMMIT SRL per {self.client_name}"
         self.cell(0, 10, footer_text, align="L")
-        # Cella destra (Numero pagina)
+        # Numero pagina a destra
         self.set_x(-30)
-        self.cell(0, 10, page_num, align="R")
+        self.cell(0, 10, f"Pag. {self.page_no()}/{{nb}}", align="R")
 
-    def section_title(self, label):
-        """Titoli di sezione stile report tecnico (Grassetto, Spaziato)"""
-        self.ln(10)
+    def chapter_title(self, label):
         self.set_font("Helvetica", "B", 14)
-        self.set_text_color(0, 0, 0) # Nero
-        self.cell(0, 10, label.upper(), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
+        self.set_text_color(0, 51, 102) # Blu scuro professionale
+        self.cell(0, 10, label, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
         self.ln(2)
 
-    def paragraph(self, text):
-        """Paragrafo con testo giustificato e interlinea leggibile"""
-        self.set_font("Helvetica", "", 11)
-        self.set_text_color(20, 20, 20) # Nero morbido
-        self.multi_cell(0, 6, text, align='J', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        self.ln(3)
+    def body_text(self, text):
+        self.set_font("Helvetica", "", 10)
+        self.set_text_color(0, 0, 0)
+        self.multi_cell(0, 5, text, align='J', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.ln(5)
 
     def sub_title(self, label):
-        """Sottotitoli per i paragrafi interni"""
-        self.ln(3)
         self.set_font("Helvetica", "B", 11)
-        self.cell(0, 6, label, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
+        self.set_text_color(50, 50, 50)
+        self.cell(0, 8, label, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
 
-# --- DEFINIZIONE TESTI COMPLETI (DAI TUOI FILE) ---
+# --- TESTI COMPLETI (DAI TUOI FILE) ---
 
 TXT_POS_001 = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni (virus, batteri, parassiti) all'interno dell'unità epidemiologica tramite vettori meccanici (veicoli, persone, attrezzature).
 Riferimenti Normativi: Reg. UE 2016/429; Liste di controllo ClassyFarm/SNQBA.
 
-1. CLASSIFICAZIONE DEL RISCHIO VISITATORI
-Nelle more dell’analisi del rischio condotta per garantire una migliore efficacia delle attività di gestione ai fini della biosicurezza, si è provveduto a classificare gli stessi in differenti categorie:
+1. Classificazione del Rischio Visitatori
+Nelle more dell'analisi del rischio condotta per garantire una migliore efficacia delle attività di gestione ai fini della biosicurezza, si è provveduto a classificare gli stessi in differenti categorie:
 
 Categoria A: Visitatori ad Alto Rischio (Professionali)
 Soggetti che, per la natura della loro attività, frequentano regolarmente più allevamenti o hanno contatti diretti con animali.
 Chi sono: Medici Veterinari, tecnici fecondatori, trasportatori di animali vivi, trasportatori di mangime (se entrano in zona pulita), tecnici manutentori di impianti zootecnici, pareggiatori, tosapecore, consulenti nutrizionisti.
-Requisito specifico: Devono dichiarare preliminarmente all’accesso eventuali contatto con animali infetti, animali di nuova introduzione in altri allevamenti e, più in generale, altri fattori di rischio, anche solo potenziale.
+Requisito specifico: Devono dichiarare preliminarmente all'accesso eventuali contatto con animali infetti, animali di nuova introduzione in altri allevamenti e, più in generale, altri fattori di rischio.
 
 Categoria B: Visitatori a Medio/Basso Rischio
 Soggetti che non hanno contatti frequenti con altri allevamenti o che non accederanno alle zone di stabulazione diretta.
 
-2. PROCEDURE DI INGRESSO (ZONA FILTRO)
-Tutti i visitatori, indipendentemente dalla categoria, devono attenersi alla seguente procedura rigorosa prima di accedere alla Zona Pulita (area di allevamento):
-- Annuncio: Suonare il campanello o contattare il personale telefonicamente. Attendere al cancello.
-- Registrazione: Compilare il Registro Visitatori in ogni sua parte.
-- Vestizione: Indossare i DPI monouso o dedicati forniti dall'azienda (calzari, tuta/camice, cuffia).
+2. Procedure di Ingresso
+Tutti i visitatori devono attenersi alla seguente procedura rigorosa prima di accedere alla Zona Pulita:
+- Annuncio: Suonare il campanello o contattare il personale. Attendere al cancello.
+- Registrazione: Compilare il Registro Visitatori in ogni sua parte (inclusa dichiarazione "ultimo contatto").
+- Vestizione: Indossare i DPI monouso o dedicati forniti dall'azienda (calzari, tuta/camice, cuffia) nella Zona Filtro.
 
-3. COMPORTAMENTO E DIVIETI
+3. Comportamento e Divieti
 - È severamente vietato introdurre alimenti di origine animale.
 - È vietato toccare gli animali se non espressamente autorizzati.
 - Rispettare sempre il percorso "Marcia in Avanti" (dal pulito allo sporco)."""
 
-TXT_POS_002 = """Scopo: Definire le modalità operative per l'introduzione di nuovi capi (acclimatamento e controllo sanitario) e per la gestione di animali residenti che manifestano segni clinici di malattia infettiva.
-Riferimenti: Reg. UE 2016/429 (Animal Health Law); Manuale ClassyFarm; Disciplinare SNQBA.
+TXT_POS_002 = """Scopo: Definire le modalità operative per l'introduzione di nuovi capi e per la gestione di animali residenti che manifestano segni clinici di malattia infettiva.
+Riferimenti: Reg. UE 2016/429; Manuale ClassyFarm; Disciplinare SNQBA.
 
-1. DEFINIZIONE DELLE AREE
+1. Definizione delle Aree
 L'azienda identifica due aree funzionali distinte:
 - Box di Quarantena (Nuovi Arrivi): Ubicato in area separata fisicamente dai gruppi di produzione. Mangiatoia e abbeveratoio dedicati.
-- Box Infermeria/Isolamento (Animali Malati): Area dedicata a capi residenti che manifestano patologie (es. mastiti contagiose, zoppie gravi infette).
+- Box Infermeria (Animali Malati): Area dedicata a capi residenti che manifestano patologie (es. mastiti contagiose, zoppie gravi).
 
-2. PROCEDURA PER NUOVI INGRESSI
-Ogni animale proveniente dall'esterno viene isolato per un periodo minimo (es. 21-28 giorni) o fino all'esito favorevole dei test sierologici.
+2. Procedura per Nuovi Ingressi
+Ogni animale proveniente dall'esterno viene isolato per un periodo minimo o fino all'esito favorevole dei test sanitari.
 Durante questo periodo:
 - L'accudimento avviene per ultimo (a fine turno).
-- Si utilizzano attrezzature dedicate (pale, forche, secchi) o disinfettate dopo l'uso.
+- Si utilizzano attrezzature dedicate o disinfettate dopo l'uso.
 
-3. GESTIONE LETAME E PULIZIA
+3. Gestione Letame
 La lettiera rimossa dall'area quarantena/isolamento NON viene distribuita direttamente sui campi. Viene stoccata in un punto dedicato della concimaia per subire un processo di biotermizzazione (>60°C) per inattivare i patogeni.
-Al termine del ciclo (guarigione o spostamento), il box subisce un vuoto sanitario dopo lavaggio e disinfezione."""
+Al termine del ciclo, il box subisce un vuoto sanitario dopo lavaggio e disinfezione."""
 
-# Nota: Qui useremo .format() per la frequenza dinamica
-TXT_POS_003_TEMPLATE = """Scopo: Descrivere le misure di difesa passiva (Pest Proofing) e attiva (Pest Control) messe in atto dall'azienda per controllare la presenza di roditori, insetti e altri animali indesiderati.
+TXT_POS_003_TEMPLATE = """Scopo: Descrivere le misure di difesa passiva (Pest Proofing) e attiva (Pest Control) contro infestanti.
 Riferimenti: Reg. (UE) 852/2004; Reg. (UE) 2016/429; SNQBA.
 
-1. RESPONSABILITÀ
-La gestione del piano di lotta agli infestanti è suddivisa tra il personale interno (Responsabile Biosicurezza) e una ditta specializzata esterna.
-Ditta Specializzata: STUDIO SUMMIT SRL (Iscritta ANID).
+1. Responsabilità
+La gestione è condivisa tra il Responsabile Biosicurezza (interno) e la ditta specializzata esterna STUDIO SUMMIT SRL (Iscritta ANID).
 
-2. MONITORAGGIO E FREQUENZA
+2. Monitoraggio e Interventi
 La ditta specializzata esegue interventi di monitoraggio e controllo con frequenza {frequenza}.
 Il numero di passaggi può essere intensificato in caso di infestazioni acute (superamento soglia di tolleranza).
 
-3. DOCUMENTAZIONE E PLANIMETRIA
-- Planimetria Dispositivi: È presente e aggiornata una mappa planimetrica dell'azienda (vedi Sezione Allegati) che identifica univocamente la posizione di ogni erogatore.
-- Report di Intervento: Al termine di ogni visita, STUDIO SUMMIT SRL rilascia un rapporto indicante prodotti usati, consumi rilevati e catture.
-- Schede di Sicurezza (SDS): Sono archiviate e disponibili le schede di tutti i formulati chimici impiegati.
+3. Documentazione
+- Planimetria Dispositivi: È presente e aggiornata una mappa planimetrica (vedi Allegati).
+- Report di Intervento: Al termine di ogni visita, STUDIO SUMMIT SRL rilascia un rapporto indicante prodotti usati, consumi e catture.
+- Schede di Sicurezza (SDS): Sono archiviate e disponibili le schede dei formulati.
 
-4. PROCEDURA DI EMERGENZA
-Qualora il personale aziendale rilevi la presenza di infestanti tra un controllo e l'altro, contatta immediatamente la ditta per un intervento straordinario entro i tempi contrattuali."""
+4. Procedura di Emergenza
+In caso di avvistamento massiccio tra un controllo e l'altro, l'operatore contatta immediatamente la ditta per un intervento straordinario."""
 
-TXT_POS_004 = """Scopo: Garantire il rispetto dei fabbisogni fisiologici ed etologici dei bovini in tutte le fasi di allevamento, in conformità al Sistema di Qualità Nazionale per il Benessere Animale (SNQBA).
+TXT_POS_004 = """Scopo: Garantire il rispetto dei fabbisogni fisiologici ed etologici dei bovini in conformità al Sistema di Qualità Nazionale per il Benessere Animale (SNQBA).
 Riferimenti: D.Lgs 146/2001; D.Lgs 126/2011; Manuale ClassyFarm.
 
-1. FORMAZIONE E COMPETENZA
-Tutto il personale riceve formazione adeguata sulla manipolazione degli animali, sul riconoscimento dei segni di malattia e sui principi di biosicurezza.
+1. Formazione
+Tutto il personale riceve formazione su manipolazione, riconoscimento segni di malattia e biosicurezza.
 Gli animali vengono ispezionati almeno due volte al giorno.
 
-2. GESTIONE VITELLAIA
-- Colostratura: Somministrazione di colostro di alta qualità (Brix >22%) entro le prime 6 ore di vita.
-- Decornazione: Eseguita entro la 3a-4a settimana con cauterizzazione termica, previa anestesia locale e analgesia (FANS).
-- Code: È vietato il taglio della coda (caudectomia).
+2. Gestione Vitellaia
+- Colostratura: Somministrazione di colostro (Brix >22%) entro le prime 6 ore.
+- Decornazione: Entro 3-4 settimane con cauterizzazione termica, previa anestesia/analgesia.
+- Code: È vietato il taglio della coda.
 
-3. MONITORAGGIO INDICATORI (ANIMAL BASED)
-Si provvede al monitoraggio periodico (es. tramite ClassyFarm) di:
-- Body Condition Score (BCS): Per valutare lo stato nutrizionale.
-- Cleanliness Score: Per valutare l'igiene.
-- Locomotion Score: Per rilevare precocemente zoppie.
+3. Monitoraggio Indicatori (Animal Based)
+Si provvede al monitoraggio periodico di:
+- Body Condition Score (BCS).
+- Cleanliness Score (Pulizia).
+- Locomotion Score (Zoppie).
 
-4. STRUTTURE ED EMERGENZE
-L'azienda è dotata di gruppo elettrogeno a riarmo automatico per garantire il funzionamento di mungitura e ventilazione in caso di blackout. È presente un sistema di allarme."""
+4. Strutture ed Emergenze
+Presenza di gruppo elettrogeno a riarmo automatico per ventilazione/mungitura e sistema di allarme."""
 
-# --- DATI CHECKLIST (Ricostruita dal CSV) ---
+# --- DATI CHECKLIST (Ricostruita dal file Excel) ---
 CHECKLIST_DATA = [
-    ["Punto di Controllo", "Requisito da Verificare", "Esito (C/NC)"],
-    ["Segnaletica", "Il cartello norme biosicurezza è presente e leggibile all'ingresso?", ""],
-    ["Cancello/Sbarra", "Il varco di accesso è chiuso per impedire ingressi non autorizzati?", ""],
-    ["Parcheggio", "Le auto visitatori sono nel parcheggio esterno (Zona Sporca)?", ""],
-    ["Registro", "Il Registro Ingressi è compilato in ogni parte?", ""],
-    ["DPI", "Sono disponibili calzari, camici e cuffie per i visitatori?", ""],
-    ["Infermeria", "I box isolamento sono puliti e con lettiera adeguata?", ""],
-    ["Pest Control", "Gli erogatori sono integri e fissati al muro?", ""],
-    ["Pest Control", "È presente il cartellino di segnalazione sopra le trappole?", ""],
-    ["Vitelli", "L'acqua è presente e pulita nei box vitelli?", ""],
-    ["Vitelli", "I vitelli <8 settimane hanno contatto visivo tra loro?", ""],
-    ["Farmaci", "L'armadietto farmaci è chiuso a chiave?", ""],
-    ["Documenti", "I report di STUDIO SUMMIT SRL sono archiviati?", ""]
+    ("Segnaletica", "Cartello divieto ingresso/norme biosicurezza presente al varco?"),
+    ("Cancello", "Il varco di accesso è chiuso/presidiato?"),
+    ("Parcheggio", "Auto visitatori parcheggiate in zona esterna (sporca)?"),
+    ("Registro", "Registro Ingressi compilato in ogni parte?"),
+    ("DPI", "Disponibili calzari/camici per visitatori?"),
+    ("Pest Control", "Erogatori integri e fissati al muro?"),
+    ("Pest Control", "Cartellino di segnalazione presente sopra le trappole?"),
+    ("Vitelli", "Acqua presente e pulita nei box?"),
+    ("Vitelli", "Contatto visivo garantito tra vitelli <8 settimane?"),
+    ("Farmaci", "Armadietto farmaci chiuso a chiave?"),
+    ("Documenti", "Report STUDIO SUMMIT SRL archiviati e disponibili?")
 ]
 
-# --- INTERFACCIA STREAMLIT ---
+# --- INTERFACCIA UTENTE ---
 st.title("Generatore Manuali | STUDIO SUMMIT")
-st.markdown("**Creazione Manuale Corretta Prassi (Biosicurezza e Benessere)**")
-
-# CSS per nascondere menu standard e rendere l'app più pulita
-st.markdown("""
-<style>
-    .reportview-container { margin-top: -2em; }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
 
 with st.form("main_form"):
-    col_logo, col_info = st.columns([1, 3])
-    with col_logo:
-        st.image("assets/logo.png", width=150) if os.path.exists("assets/logo.png") else st.write("Logo non trovato")
-    
-    with col_info:
-        st.subheader("Dati Aziendali")
-        ragione_sociale = st.text_input("Ragione Sociale Completa")
-        indirizzo = st.text_input("Indirizzo Sede")
-        codice_stalla = st.text_input("Codice Stalla (es. 001AV123)")
+    st.subheader("1. Anagrafica Cliente")
+    col1, col2 = st.columns(2)
+    with col1:
+        ragione_sociale = st.text_input("Ragione Sociale")
+        indirizzo = st.text_input("Indirizzo")
+        codice_stalla = st.text_input("Codice Stalla")
+    with col2:
         piva = st.text_input("Partita IVA")
+        telefono = st.text_input("Telefono")
+        email = st.text_input("Email")
 
-    st.markdown("---")
-    
-    col_resp1, col_resp2, col_freq = st.columns(3)
-    with col_resp1:
-        resp_bio = st.text_input("Resp. Biosicurezza (Nome Cognome)")
-    with col_resp2:
-        resp_ben = st.text_input("Resp. Benessere (Nome Cognome)")
-        data_corso = st.date_input("Data Attestato Benessere")
-    with col_freq:
-        st.markdown("**Personalizzazione POS 003**")
-        freq_pest = st.selectbox("Frequenza Controlli Pest", 
-                                ["Quadrimestrale", "Bimestrale", "Mensile", "Trimestrale"])
+    st.subheader("2. Responsabili")
+    c_resp1, c_resp2 = st.columns(2)
+    resp_bio = c_resp1.text_input("Resp. Biosicurezza")
+    resp_ben = c_resp2.text_input("Resp. Benessere")
+    data_corso = c_resp2.date_input("Data Attestato Benessere")
 
-    st.markdown("---")
-    st.subheader("Caricamento Allegato Variabile")
-    st.markdown("Carica la **Planimetria Trappole** specifica per questo cliente.")
-    uploaded_planimetria = st.file_uploader("Trascina file (JPG/PNG)", type=["jpg", "png", "jpeg"])
+    st.subheader("3. Variabili POS & Allegati")
+    freq_pest = st.selectbox("Frequenza Pest Control", ["quadrimestrale", "bimestrale", "mensile", "trimestrale"])
+    uploaded_planimetria = st.file_uploader("Carica Planimetria Trappole (JPG/PNG)", type=["jpg", "png", "jpeg"])
 
-    submit_btn = st.form_submit_button("GENERA MANUALE PDF COMPLETO", type="primary")
+    submitted = st.form_submit_button("GENERA PDF")
 
-# --- LOGICA GENERAZIONE PDF ---
-if submit_btn:
+# --- LOGICA GENERAZIONE ---
+if submitted:
     if not ragione_sociale:
-        st.error("Inserire almeno la Ragione Sociale.")
+        st.error("Inserire Ragione Sociale!")
     else:
-        # 1. Setup PDF
-        pdf = PDF(client_name=ragione_sociale, reason_social=ragione_sociale)
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.add_page()
+        try:
+            pdf = PDF(ragione_sociale)
+            pdf.alias_nb_pages()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            
+            # --- COPERTINA ---
+            pdf.add_page()
+            pdf.ln(50)
+            pdf.set_font("Helvetica", "B", 24)
+            pdf.multi_cell(0, 10, "MANUALE DI CORRETTA PRASSI\nPER BENESSERE E BIOSICUREZZA", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.ln(10)
+            
+            if os.path.exists("assets/cover.jpg"):
+                x_pos = (pdf.w - 140) / 2
+                pdf.image("assets/cover.jpg", x=x_pos, w=140)
+            
+            pdf.ln(20)
+            pdf.set_font("Helvetica", "B", 18)
+            pdf.cell(0, 10, ragione_sociale, align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.set_font("Helvetica", "", 12)
+            pdf.cell(0, 10, f"Codice Stalla: {codice_stalla}", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-        # --- COPERTINA (Stile Relazione) ---
-        pdf.ln(40)
-        pdf.set_font("Helvetica", "B", 24)
-        pdf.multi_cell(0, 10, "MANUALE DI CORRETTA PRASSI\nPER BENESSERE E BIOSICUREZZA", align="C")
-        pdf.ln(10)
-        
-        # Immagine Copertina
-        if os.path.exists("assets/cover.jpg"):
-            x_centered = (pdf.w - 140) / 2
-            pdf.image("assets/cover.jpg", x=x_centered, w=140)
-        
-        pdf.ln(20)
-        pdf.set_font("Helvetica", "B", 16)
-        pdf.cell(0, 10, "Azienda:", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.set_font("Helvetica", "", 16)
-        pdf.cell(0, 10, ragione_sociale, align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.set_font("Helvetica", "", 12)
-        pdf.cell(0, 10, f"Codice Stalla: {codice_stalla}", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-        # --- PAGINA 1: ANAGRAFICA ---
-        pdf.add_page()
-        pdf.section_title("SCHEDA ANAGRAFICA E RESPONSABILITÀ")
-        
-        # Tabella Anagrafica personalizzata
-        with pdf.table(col_widths=(40, 100), text_align="L") as table:
-            data_rows = [
-                ("Ragione Sociale", ragione_sociale),
-                ("Indirizzo Sede", indirizzo),
-                ("Partita IVA", piva),
-                ("Codice Stalla", codice_stalla),
-                ("Resp. Biosicurezza", resp_bio),
-                ("Resp. Benessere", resp_ben),
-                ("Data Corso Ben.", data_corso.strftime("%d/%m/%Y")),
+            # --- PAGINA ANAGRAFICA ---
+            pdf.add_page()
+            pdf.chapter_title("SCHEDA ANAGRAFICA")
+            
+            # Tabella Anagrafica semplice con celle
+            pdf.set_font("Helvetica", "", 11)
+            data = [
+                ("Ragione Sociale:", ragione_sociale),
+                ("Indirizzo:", indirizzo),
+                ("P.IVA:", piva),
+                ("Codice Stalla:", codice_stalla),
+                ("Contatti:", f"{telefono} {email}"),
+                ("Resp. Biosicurezza:", resp_bio),
+                ("Resp. Benessere:", resp_ben),
+                ("Data Corso:", data_corso.strftime("%d/%m/%Y"))
             ]
-            for label, value in data_rows:
-                row = table.row()
-                row.cell(label, style=FontFace(emphasis="BOLD"))
-                row.cell(value)
-
-        # --- POS 001 ---
-        pdf.add_page()
-        pdf.section_title("POS 001 - GESTIONE VISITATORI")
-        pdf.paragraph(TXT_POS_001)
-
-        # --- POS 002 ---
-        pdf.add_page()
-        pdf.section_title("POS 002 - GESTIONE QUARANTENA")
-        pdf.paragraph(TXT_POS_002)
-
-        # --- POS 003 (DINAMICO) ---
-        pdf.add_page()
-        pdf.section_title("POS 003 - PEST MANAGEMENT")
-        # Inserimento variabile frequenza (minuscolo per scorrere nel testo)
-        txt_pos3_filled = TXT_POS_003_TEMPLATE.format(frequenza=freq_pest.lower())
-        pdf.paragraph(txt_pos3_filled)
-
-        # --- POS 004 ---
-        pdf.add_page()
-        pdf.section_title("POS 004 - BENESSERE ANIMALE")
-        pdf.paragraph(TXT_POS_004)
-
-        # --- ALLEGATI ---
-        pdf.add_page()
-        pdf.section_title("ALLEGATI OBBLIGATORI")
-        pdf.paragraph("Di seguito sono riportati i documenti e la cartellonistica citati nelle Procedure Operative Standard.")
-
-        # ALLEGATO 1: CARTELLO
-        pdf.add_page()
-        pdf.sub_title("ALLEGATO 1: CARTELLO BIOSICUREZZA (INGRESSO)")
-        if os.path.exists("assets/cartello.jpg"):
-            pdf.image("assets/cartello.jpg", w=170, x=20, y=50)
-        else:
-            pdf.paragraph("[ERRORE: Immagine cartello.jpg non trovata]")
-
-        # ALLEGATO 2: PLANIMETRIA (VARIABILE)
-        pdf.add_page()
-        pdf.sub_title("ALLEGATO 2: PLANIMETRIA PEST CONTROL")
-        if uploaded_planimetria:
-            temp_path = "temp_plan.jpg"
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_planimetria.getbuffer())
-            pdf.image(temp_path, w=170, x=20, y=50)
-        else:
-            pdf.paragraph("[NESSUNA PLANIMETRIA CARICATA IN FASE DI INPUT]")
-            # Box vuoto come placeholder
-            pdf.rect(20, 50, 170, 100)
-            pdf.text(80, 100, "Spazio per Planimetria")
-
-        # ALLEGATO 3: BCS
-        pdf.add_page()
-        pdf.sub_title("ALLEGATO 3: INFOGRAFICA BCS")
-        if os.path.exists("assets/bcs.jpg"):
-            pdf.image("assets/bcs.jpg", w=170, x=20, y=50)
-
-        # ALLEGATO 4: CHECKLIST (NUOVO RICHIESTO)
-        pdf.add_page()
-        pdf.section_title("CHECK LIST DI MONITORAGGIO PERIODICO")
-        pdf.paragraph("La seguente lista di controllo deve essere utilizzata dal Responsabile Biosicurezza con cadenza mensile per verificare il mantenimento dei requisiti.")
-        
-        pdf.ln(5)
-        # Rendering Tabella Checklist
-        with pdf.table(col_widths=(30, 100, 30), text_align="L") as table:
-            # Header
-            header = table.row()
-            for h in CHECKLIST_DATA[0]:
-                header.cell(h, style=FontFace(emphasis="BOLD", fill_color=(230, 230, 230)))
             
-            # Rows
-            for row_data in CHECKLIST_DATA[1:]:
-                r = table.row()
-                r.cell(row_data[0])
-                r.cell(row_data[1])
-                r.cell(row_data[2]) # Cella vuota per la spunta
+            for key, val in data:
+                pdf.set_font("Helvetica", "B", 11)
+                pdf.cell(50, 8, key, border=1)
+                pdf.set_font("Helvetica", "", 11)
+                pdf.cell(0, 8, str(val), border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-        # --- OUTPUT FILE ---
-        temp_file = "Manuale_Finale.pdf"
-        pdf.output(temp_file)
-        
-        with open(temp_file, "rb") as f:
-            pdf_data = f.read()
+            # --- POS 001 ---
+            pdf.add_page()
+            pdf.chapter_title("POS 001 - VISITATORI")
+            pdf.body_text(TXT_POS_001)
+
+            # --- POS 002 ---
+            pdf.add_page()
+            pdf.chapter_title("POS 002 - QUARANTENA")
+            pdf.body_text(TXT_POS_002)
+
+            # --- POS 003 ---
+            pdf.add_page()
+            pdf.chapter_title("POS 003 - PEST MANAGEMENT")
+            pdf.body_text(TXT_POS_003_TEMPLATE.format(frequenza=freq_pest))
+
+            # --- POS 004 ---
+            pdf.add_page()
+            pdf.chapter_title("POS 004 - BENESSERE")
+            pdf.body_text(TXT_POS_004)
+
+            # --- ALLEGATI ---
+            pdf.add_page()
+            pdf.chapter_title("ALLEGATI")
             
-        st.success("✅ Manuale Generato Correttamente!")
-        st.download_button("📥 SCARICA PDF FINALE", data=pdf_data, file_name=f"Manuale_{ragione_sociale}.pdf", mime="application/pdf")
+            # 1. Cartello
+            pdf.sub_title("1. Cartello Biosicurezza")
+            if os.path.exists("assets/cartello.jpg"):
+                pdf.image("assets/cartello.jpg", w=160, x=25)
+            else:
+                pdf.body_text("[Immagine Cartello non trovata]")
+            
+            # 2. Planimetria
+            pdf.add_page()
+            pdf.sub_title("2. Planimetria Pest Control")
+            if uploaded_planimetria:
+                # Salva temporaneamente il file caricato
+                with open("temp_plan.jpg", "wb") as f:
+                    f.write(uploaded_planimetria.getbuffer())
+                pdf.image("temp_plan.jpg", w=170, x=20)
+            else:
+                pdf.body_text("[Nessuna Planimetria Caricata]")
+
+            # 3. BCS
+            pdf.add_page()
+            pdf.sub_title("3. Infografica BCS")
+            if os.path.exists("assets/bcs.jpg"):
+                pdf.image("assets/bcs.jpg", w=170, x=20)
+            else:
+                pdf.body_text("[Immagine BCS non trovata]")
+
+            # --- CHECKLIST FINALE ---
+            pdf.add_page()
+            pdf.chapter_title("CHECK LIST DI MONITORAGGIO")
+            pdf.body_text("Da compilare con cadenza periodica.")
+            pdf.ln(5)
+            
+            # Intestazione Tabella
+            pdf.set_fill_color(240, 240, 240)
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.cell(40, 8, "Ambito", 1, 0, 'C', fill=True)
+            pdf.cell(110, 8, "Controllo", 1, 0, 'C', fill=True)
+            pdf.cell(40, 8, "Esito (C/NC)", 1, 1, 'C', fill=True) # 1 finale va a capo
+            
+            # Righe
+            pdf.set_font("Helvetica", "", 10)
+            for area, check in CHECKLIST_DATA:
+                pdf.cell(40, 8, area, 1)
+                pdf.cell(110, 8, check, 1)
+                pdf.cell(40, 8, "", 1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+            # --- OUTPUT ---
+            # Metodo più sicuro per Streamlit: output su bytearray
+            pdf_bytes = pdf.output()
+            
+            st.success("✅ Documento generato con successo!")
+            st.download_button(
+                label="📥 SCARICA PDF FINALE",
+                data=pdf_bytes,
+                file_name=f"Manuale_{ragione_sociale.replace(' ', '_')}.pdf",
+                mime="application/pdf"
+            )
+            
+        except Exception as e:
+            st.error(f"Si è verificato un errore durante la generazione: {e}")
