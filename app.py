@@ -2,41 +2,50 @@ import streamlit as st
 from fpdf import FPDF
 import datetime
 import os
+from PIL import Image
+import tempfile
 
-# --- FUNZIONE PULIZIA TESTO ---
+# --- FUNZIONE PULIZIA TESTO (Preventiva per caratteri Word) ---
 def clean_text(text):
     if text is None: return ""
+    text = str(text)
     replacements = {
         u'\u2018': "'", u'\u2019': "'", u'\u201c': '"', u'\u201d': '"',
         u'\u2013': '-', u'\u2014': '-', u'\u2026': '...', u'\u00B0': ' gradi ',
-        u'\u20ac': 'EUR',
+        u'\u20ac': 'EUR', u'’': "'", u'“': '"', u'”': '"'
     }
     for key, value in replacements.items():
         text = text.replace(key, value)
-    return text.encode('latin-1', 'replace').decode('latin-1')
+    
+    # Forza la codifica in Latin-1 ignorando caratteri impossibili
+    return text.encode('latin-1', 'ignore').decode('latin-1')
+
+# --- FUNZIONE SALVA IMMAGINE SICURA ---
+# Questa funzione converte qualsiasi immagine in JPG temporaneo per evitare errori di trasparenza
+def get_safe_image_path(original_path):
+    if not os.path.exists(original_path):
+        return None
+    try:
+        img = Image.open(original_path)
+        # Se ha trasparenza (RGBA), converti in bianco (RGB)
+        if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+            alpha = img.convert('RGBA').split()[-1]
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img, mask=alpha)
+            img = bg
+        else:
+            img = img.convert('RGB')
+        
+        # Salva in un file temporaneo
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+            img.save(tmp, format='JPEG', quality=90)
+            return tmp.name
+    except Exception as e:
+        print(f"Errore conversione immagine {original_path}: {e}")
+        return None
 
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="R-ADVISOR Generator", page_icon="📄", layout="centered")
-
-# --- DIAGNOSTICA FILE (PER CAPIRE L'ERRORE) ---
-with st.sidebar:
-    st.header("🔍 DIAGNOSTICA FILES")
-    st.write("Controllo se il server vede i tuoi file:")
-    
-    if os.path.exists("assets"):
-        st.success("Cartella 'assets' TROVATA")
-        files_in_assets = os.listdir("assets")
-        st.write("File trovati dentro assets:", files_in_assets)
-        
-        # Check specifici
-        required_files = ["logo.png", "cover.jpg", "cartello.jpg", "bcs.jpg"]
-        for f in required_files:
-            if f in files_in_assets:
-                st.write(f"✅ {f} ok")
-            else:
-                st.error(f"❌ {f} MANCANTE o nome diverso (controlla maiuscole!)")
-    else:
-        st.error("❌ Cartella 'assets' NON TROVATA. Controlla su GitHub.")
 
 # --- CLASSE PDF ---
 class PDF(FPDF):
@@ -45,10 +54,15 @@ class PDF(FPDF):
         self.client_name = clean_text(client_name)
 
     def header(self):
-        # Percorso esatto verificato
-        logo_path = "assets/logo.png"
-        if os.path.exists(logo_path):
-            self.image(logo_path, x=160, y=10, w=40)
+        # Gestione Logo Sicura
+        logo_path = "assets/logo.png" # Assicurati che su GitHub sia minuscolo
+        safe_logo = get_safe_image_path(logo_path)
+        
+        if safe_logo:
+            try:
+                self.image(safe_logo, x=160, y=10, w=40)
+            except:
+                pass 
         self.ln(20)
 
     def footer(self):
@@ -67,7 +81,9 @@ class PDF(FPDF):
         self.multi_cell(0, 6, clean_text(body), align='J') 
         self.ln()
 
-# --- TESTI POS INTEGRALI ---
+# --- DEFINIZIONE TESTI ---
+# (Uso i testi che ho estratto precedentemente)
+
 POS_001_TEXT = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni (virus, batteri, parassiti) all'interno dell'unità epidemiologica tramite vettori meccanici (veicoli, persone, attrezzature).
 Riferimenti Normativi: Reg. UE 2016/429; Liste di controllo ClassyFarm/SNQBA.
 
@@ -207,7 +223,7 @@ L'azienda è dotata di gruppo elettrogeno a riarmo automatico per garantire il f
 
 # --- INTERFACCIA UTENTE ---
 st.title("R-ADVISOR-APP | Generatore Manuali")
-st.markdown("Compila i dati aziendali per generare il **Manuale di Corretta Prassi per Benessere e Biosicurezza**.")
+st.success("Sistema Pronto. Compila i dati qui sotto.")
 
 with st.form("data_entry_form"):
     st.subheader("1. Anagrafica Azienda")
@@ -294,8 +310,9 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
 
             # 1. COPERTINA
             pdf.add_page()
-            if os.path.exists("assets/cover.jpg"):
-                pdf.image("assets/cover.jpg", x=35, y=40, w=140)
+            safe_cover = get_safe_image_path("assets/cover.jpg")
+            if safe_cover:
+                pdf.image(safe_cover, x=35, y=40, w=140)
             
             pdf.set_y(150)
             pdf.set_font("Helvetica", "B", 24)
@@ -350,17 +367,30 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             pdf.ln(5)
             pdf.set_font("Helvetica", "B", 12)
             pdf.cell(0, 10, "ALLEGATO 1: CARTELLONISTICA VISITATORI", ln=True)
-            if os.path.exists("assets/cartello.jpg"):
-                pdf.image("assets/cartello.jpg", x=30, w=150)
+            
+            safe_cartello = get_safe_image_path("assets/cartello.jpg")
+            if safe_cartello:
+                pdf.image(safe_cartello, x=30, w=150)
+            else:
+                pdf.set_font("Helvetica", "I", 10)
+                pdf.cell(0, 10, "Immagine cartello non trovata (controlla nome file)", ln=True)
             
             pdf.add_page()
             pdf.cell(0, 10, "ALLEGATO 2: PLANIMETRIA PEST CONTROL", ln=True)
             if planimetria_file is not None:
-                image_data = planimetria_file.read()
-                with open("temp_plan.png", "wb") as f:
-                    f.write(image_data)
-                pdf.image("temp_plan.png", x=20, w=170)
-                os.remove("temp_plan.png")
+                # Salva il file caricato
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_up:
+                    tmp_up.write(planimetria_file.read())
+                    tmp_up_path = tmp_up.name
+                
+                # Converti in sicuro
+                safe_plan = get_safe_image_path(tmp_up_path)
+                if safe_plan:
+                    pdf.image(safe_plan, x=20, w=170)
+                
+                # Pulizia
+                try: os.remove(tmp_up_path)
+                except: pass
             else:
                 pdf.set_font("Helvetica", "I", 10)
                 pdf.cell(0, 10, "Nessuna planimetria caricata.", ln=True)
@@ -368,8 +398,13 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             pdf.add_page()
             pdf.set_font("Helvetica", "B", 12)
             pdf.cell(0, 10, "ALLEGATO 3: INFOGRAFICA BODY CONDITION SCORE (BCS)", ln=True)
-            if os.path.exists("assets/bcs.jpg"):
-                pdf.image("assets/bcs.jpg", x=20, w=170)
+            
+            safe_bcs = get_safe_image_path("assets/bcs.jpg")
+            if safe_bcs:
+                pdf.image(safe_bcs, x=20, w=170)
+            else:
+                pdf.set_font("Helvetica", "I", 10)
+                pdf.cell(0, 10, "Immagine BCS non trovata", ln=True)
 
             # Output PDF
             pdf_content = pdf.output(dest='S').encode('latin-1', 'replace')
@@ -384,5 +419,4 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             )
             
         except Exception as e:
-            st.error(f"ERRORE CRITICO: {e}")
-            st.warning("Se l'errore parla di 'Image not found', controlla la sezione Diagnostica qui a sinistra.")
+            st.error(f"Errore: {e}")
