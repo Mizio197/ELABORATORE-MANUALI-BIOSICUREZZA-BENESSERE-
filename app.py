@@ -1,298 +1,366 @@
 import streamlit as st
 from fpdf import FPDF
-from fpdf.fonts import FontFace
-from fpdf.enums import XPos, YPos
+import datetime
+from PIL import Image
 import os
+import io
 
 # --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="R-ADVISOR | Generatore Manuali", page_icon="📋", layout="wide")
+st.set_page_config(page_title="R-ADVISOR Generator", page_icon="📄", layout="centered")
 
-# --- CLASSE PDF STYLE RELAZIONE ---
+# --- CLASSE PDF PERSONALIZZATA ---
 class PDF(FPDF):
     def __init__(self, client_name):
         super().__init__()
         self.client_name = client_name
-        
+
     def header(self):
-        # Logo Studio Summit a Destra
+        # Logo Studio Summit a destra
         if os.path.exists("assets/logo.png"):
-            self.image("assets/logo.png", x=155, y=10, w=45)
-        # Linea sottile sotto l'intestazione per pulizia
-        self.set_draw_color(200, 200, 200)
-        self.line(10, 35, 200, 35)
-        self.ln(30)
+            self.image("assets/logo.png", x=160, y=10, w=40)
+        self.ln(20)
 
     def footer(self):
         self.set_y(-15)
         self.set_font("Helvetica", "I", 8)
-        self.set_text_color(100, 100, 100)
-        # Testo a sinistra
-        footer_text = f"ELABORATO CON R-ADVISOR-APP da STUDIO SUMMIT SRL per {self.client_name}"
-        self.cell(0, 10, footer_text, align="L")
-        # Numero pagina a destra
-        self.set_x(-30)
-        self.cell(0, 10, f"Pag. {self.page_no()}/{{nb}}", align="R")
+        text = f"ELABORATO CON R-ADVISOR-APP da STUDIO SUMMIT SRL per {self.client_name} - Pagina {self.page_no()}/{{nb}}"
+        self.cell(0, 10, text, align="C")
 
     def chapter_title(self, label):
         self.set_font("Helvetica", "B", 14)
-        self.set_text_color(0, 51, 102) # Blu scuro professionale
-        self.cell(0, 10, label, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
-        self.ln(2)
-
-    def body_text(self, text):
-        self.set_font("Helvetica", "", 10)
-        self.set_text_color(0, 0, 0)
-        self.multi_cell(0, 5, text, align='J', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.cell(0, 10, label, ln=True, align='L')
         self.ln(5)
 
-    def sub_title(self, label):
-        self.set_font("Helvetica", "B", 11)
-        self.set_text_color(50, 50, 50)
-        self.cell(0, 8, label, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
+    def chapter_body(self, body):
+        self.set_font("Helvetica", "", 11)
+        # multi_cell gestisce il testo lungo e l'allineamento giustificato ('J')
+        self.multi_cell(0, 6, body, align='J') 
+        self.ln()
 
-# --- TESTI COMPLETI ---
+# --- DEFINIZIONE TESTI INTEGRALI (POS) ---
 
-TXT_POS_001 = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni (virus, batteri, parassiti) all'interno dell'unità epidemiologica tramite vettori meccanici (veicoli, persone, attrezzature).
+POS_001_TEXT = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni (virus, batteri, parassiti) all'interno dell'unità epidemiologica tramite vettori meccanici (veicoli, persone, attrezzature).
 Riferimenti Normativi: Reg. UE 2016/429; Liste di controllo ClassyFarm/SNQBA.
 
 1. Classificazione del Rischio Visitatori
-Nelle more dell'analisi del rischio condotta per garantire una migliore efficacia delle attività di gestione ai fini della biosicurezza, si è provveduto a classificare gli stessi in differenti categorie:
+Nelle more dell’analisi del rischio condotta per garantire una migliore efficacia delle attività di gestione ai fini della biosicurezza, si è provveduto a classificare in categorie gli stessi in differenti categorie:
 
 Categoria A: Visitatori ad Alto Rischio (Professionali)
 Soggetti che, per la natura della loro attività, frequentano regolarmente più allevamenti o hanno contatti diretti con animali.
 Chi sono: Medici Veterinari, tecnici fecondatori, trasportatori di animali vivi, trasportatori di mangime (se entrano in zona pulita), tecnici manutentori di impianti zootecnici, pareggiatori, tosapecore, consulenti nutrizionisti.
-Requisito specifico: Devono dichiarare preliminarmente all'accesso eventuali contatto con animali infetti, animali di nuova introduzione in altri allevamenti e, più in generale, altri fattori di rischio.
+Requisito specifico: Devono dichiarare preliminarmente all’accesso eventuali contatto con animali infetti, animali di nuova introduzione in altri allevamenti e, più in generale, altri fattori di rischio, anche solo potenziale. Onere dell’operatore è la valutazione specifica di ogni singola dichiarazione di rischio.
 
 Categoria B: Visitatori a Medio/Basso Rischio
 Soggetti che non hanno contatti frequenti con altri allevamenti o che non accederanno alle zone di stabulazione diretta.
+Chi sono: Fornitori di servizi vari (elettricisti, idraulici non specializzati in zootecnia), rappresentanti commerciali, visitatori istituzionali, scolaresche (se ammesse).
 
-2. Procedure di Ingresso
-Tutti i visitatori devono attenersi alla seguente procedura rigorosa prima di accedere alla Zona Pulita:
-- Annuncio: Suonare il campanello o contattare il personale. Attendere al cancello.
-- Registrazione: Compilare il Registro Visitatori in ogni sua parte (inclusa dichiarazione "ultimo contatto").
-- Vestizione: Indossare i DPI monouso o dedicati forniti dall'azienda (calzari, tuta/camice, cuffia) nella Zona Filtro.
+2. Procedura di Accesso (Zona Filtro)
+L'accesso all'allevamento è consentito esclusivamente attraverso l'unico varco d'ingresso identificato e segnalato.
+Tutti i visitatori, indipendentemente dalla categoria, devono attenersi alla seguente procedura:
+a) Arrivo e Parcheggio: Lasciare il proprio automezzo nell'area di parcheggio esterna ("Zona Sporca"), salvo specifica autorizzazione per carico/scarico materiali pesanti (in tal caso il mezzo dovrà essere disinfettato alle ruote e passaruota).
+b) Registrazione: Compilare il "Registro Visitatori" indicando:
+- Nome e Cognome.
+- Azienda/Ente di appartenenza.
+- Targa del veicolo (se entrato).
+- Dichiarazione circa condizioni di potenziale rischio Luogo e data dell'ultimo contatto con animali da reddito (essenziale per Categoria A).
 
-3. Comportamento e Divieti
-- È severamente vietato introdurre alimenti di origine animale.
-- È vietato toccare gli animali se non espressamente autorizzati.
-- Rispettare sempre il percorso "Marcia in Avanti" (dal pulito allo sporco)."""
+3. Dispositivi di Protezione (DPI)
+Prima di accedere alla "Zona Pulita" (area di allevamento), il visitatore deve indossare i DPI forniti dall'azienda o i propri se giudicati idonei e puliti dal Responsabile Biosicurezza.
+Dotazione Minima:
+- Calzari monouso o stivali aziendali dedicati.
+- Camice monouso o tuta da lavoro pulita.
+- Cuffia copricapo (se necessaria).
 
-TXT_POS_002 = """Scopo: Definire le modalità operative per l'introduzione di nuovi capi e per la gestione di animali residenti che manifestano segni clinici di malattia infettiva.
-Riferimenti: Reg. UE 2016/429; Manuale ClassyFarm; Disciplinare SNQBA.
+4. Comportamento all'interno dell'Allevamento
+Accompagnamento: I visitatori non possono mai muoversi liberamente in azienda. Devono essere costantemente accompagnati dal titolare o da un delegato.
+Percorsi: Rispettare rigorosamente il flusso "Marcia in Avanti" (dal pulito allo sporco / dagli animali più giovani ai più anziani), salvo diversa indicazione veterinaria.
+Divieti:
+- Vietato toccare gli animali se non strettamente necessario e autorizzato.
+- Vietato introdurre cibo o bevande nelle aree di stabulazione.
+- Vietato introdurre attrezzature personali (cellulari, tablet) se non protette o precedentemente disinfettate con salviette imbevute.
 
-1. Definizione delle Aree
+5. Cartellonistica
+All'ingresso della proprietà (cancello principale) e all'ingresso della zona filtro, è stato predisposto ed affisso in modo ben visibile il seguente cartello:
+ATTENZIONE - ZONA A BIOSICUREZZA CONTROLLATA
+È SEVERAMENTE VIETATO L'INGRESSO AI NON AUTORIZZATI
+Per accedere a questa struttura è OBBLIGATORIO:
+- Annunciare la propria presenza e attendere il personale.
+- Non entrare senza autorizzazione.
+- Registrare il proprio ingresso nell'apposito modulo.
+- Indossare i DPI forniti dall'azienda (calzari, camice, cuffia).
+- Sottoporre gli automezzi autorizzati a disinfezione."""
+
+POS_002_TEXT = """Scopo: Definire le modalità operative per l'introduzione di nuovi capi (acclimatamento e controllo sanitario) e per la gestione di animali residenti che manifestano segni clinici di malattia infettiva, al fine di garantire la compartimentazione sanitaria.
+Riferimenti: Reg. UE 2016/429 (Animal Health Law); Manuale ClassyFarm (Area C - Biosicurezza); Disciplinare SNQBA.
+
+1. Definizione e Requisiti delle Aree
 L'azienda identifica due aree funzionali distinte:
-- Box di Quarantena (Nuovi Arrivi): Ubicato in area separata fisicamente dai gruppi di produzione. Mangiatoia e abbeveratoio dedicati.
-- Box Infermeria (Animali Malati): Area dedicata a capi residenti che manifestano patologie (es. mastiti contagiose, zoppie gravi).
 
-2. Procedura per Nuovi Ingressi
-Ogni animale proveniente dall'esterno viene isolato per un periodo minimo o fino all'esito favorevole dei test sanitari.
-Durante questo periodo:
-- L'accudimento avviene per ultimo (a fine turno).
-- Si utilizzano attrezzature dedicate o disinfettate dopo l'uso.
+1.1 Box di Quarantena (Nuovi Arrivi)
+Ubicazione: Risulta fisicamente separata dai gruppi di produzione (stalla vacche in lattazione, box vitelli sani).
+Caratteristiche:
+- Mangiatoia e abbeveratoio dedicati e non condivisi con box limitrofi.
+- Pavimentazione facilmente lavabile e disinfettabile.
 
-3. Gestione Letame
-La lettiera rimossa dall'area quarantena/isolamento NON viene distribuita direttamente sui campi. Viene stoccata in un punto dedicato della concimaia per subire un processo di biotermizzazione (>60°C) per inattivare i patogeni.
-Al termine del ciclo, il box subisce un vuoto sanitario dopo lavaggio e disinfezione."""
+1.2 Box Infermeria/Isolamento (Animali Malati)
+Si tratta di area dedicata a capi residenti (adulti o vitelli) che manifestano patologie (es. mastiti contagiose, zoppie gravi infette, sindromi respiratorie, diarree neonatali). Garantisce il benessere dell'animale malato (lettiera pulita, asciutta, spazio adeguato, facile accesso all'acqua).
 
-TXT_POS_003_TEMPLATE = """Scopo: Descrivere le misure di difesa passiva (Pest Proofing) e attiva (Pest Control) contro infestanti.
-Riferimenti: Reg. (UE) 852/2004; Reg. (UE) 2016/429; SNQBA.
+2. Procedura per Nuovi Ingressi (Quarantena)
+Questa procedura si applica a qualsiasi animale proveniente dall'esterno, prescindendo dall’età.
+2.1 Fase Pre-Ingresso
+Si provvede a verifica dello stato sanitario dell'allevamento di provenienza (tramite Modello 4 e attestazioni sanitarie).
 
-1. Responsabilità
-La gestione è condivisa tra il Responsabile Biosicurezza (interno) e la ditta specializzata esterna STUDIO SUMMIT SRL (Iscritta ANID).
+2.2 Gestione Periodo di Quarantena
+Durata: Minimo 21 giorni (o diverso periodo indicato dal Veterinario Aziendale).
+Attività:
+- Isolamento completo dal resto della mandria.
+- Osservazione quotidiana per rilevare segni clinici.
+- Esecuzione dei prelievi ematici/tamponi previsti dai piani di risanamento o concordati con il Veterinario.
+- Utilizzo di attrezzature dedicate (pale, forche) o accurata disinfezione dopo l'uso nel box quarantena.
 
-2. Monitoraggio e Interventi
-La ditta specializzata esegue interventi di monitoraggio e controllo con frequenza {frequenza}.
-Il numero di passaggi può essere intensificato in caso di infestazioni acute (superamento soglia di tolleranza).
+3. Procedura per Animali Malati (Isolamento)
+Identificazione: L'animale sospetto viene immediatamente identificato e spostato nel Box Infermeria.
+Gestione:
+- L'animale viene munto per ultimo (se in lattazione) con gruppo di mungitura separato o sanificato dopo l'uso.
+- Le cure vengono prestate dopo aver accudito gli animali sani (flusso "dai sani ai malati").
 
-3. Documentazione
-- Planimetria Dispositivi: È presente e aggiornata una mappa planimetrica (vedi Allegati).
-- Report di Intervento: Al termine di ogni visita, STUDIO SUMMIT SRL rilascia un rapporto indicante prodotti usati, consumi e catture.
-- Schede di Sicurezza (SDS): Sono archiviate e disponibili le schede dei formulati.
+4. Pulizia e Vuoto Sanitario
+4.1 Pulizia Box
+Ogni volta che un animale (o un gruppo omogeneo) in quarantena/isolamento viene spostato in stalla o esce (guarigione/macellazione), il box è sottoposto alle seguenti attività:
+- Svuotato completamente dalla lettiera.
+- Lavato con idropulitrice (acqua calda se possibile) per rimuovere il biofilm.
+- Disinfettato con prodotto virucida/battericida approvato.
+- Lasciato asciugare (vuoto sanitario) prima di introdurre un nuovo animale.
 
-4. Procedura di Emergenza
-In caso di avvistamento massiccio tra un controllo e l'altro, l'operatore contatta immediatamente la ditta per un intervento straordinario."""
+4.2 Gestione Letame
+La lettiera rimossa dall'area quarantena/isolamento NON viene distribuita direttamente sui campi o mischiata subito al letame "maturo".
+Tale lettiera viene stoccata in un punto dedicato della concimaia per subire un processo di biotermizzazione (compostaggio naturale che raggiunge >60°C) per inattivare virus e batteri prima dello spandimento agronomico.
 
-TXT_POS_004 = """Scopo: Garantire il rispetto dei fabbisogni fisiologici ed etologici dei bovini in conformità al Sistema di Qualità Nazionale per il Benessere Animale (SNQBA).
-Riferimenti: D.Lgs 146/2001; D.Lgs 126/2011; Manuale ClassyFarm.
+5. Registrazione e Tracciabilità
+Per ogni animale in Quarantena/Isolamento si provvede a compilare la Scheda di Stalla/Cartella Clinica contenente:
+- ID Animale.
+- Data ingresso in isolamento e motivo.
+- Trattamenti farmacologici effettuati (data, farmaco, quantità, tempi di sospensione) - Rif. Registro Trattamenti Elettronico.
+- Esiti esami di laboratorio.
+- Data di fine isolamento/esito (guarigione, macellazione, decesso)."""
 
-1. Formazione
-Tutto il personale riceve formazione su manipolazione, riconoscimento segni di malattia e biosicurezza.
-Gli animali vengono ispezionati almeno due volte al giorno.
+POS_004_TEXT = """Scopo: Descrivere le modalità operative adottate dall'azienda per garantire il rispetto dei fabbisogni fisiologici ed etologici dei bovini in tutte le fasi di allevamento (vitelli, manze, vacche in lattazione e asciutta), in conformità alla normativa vigente e ai requisiti del Sistema di Qualità Nazionale per il Benessere Animale (SNQBA).
+Riferimenti: D.Lgs 146/2001; D.Lgs 126/2011; Manuale ClassyFarm (Area A - Management e Personale, Area B - Strutture).
 
-2. Gestione Vitellaia
-- Colostratura: Somministrazione di colostro (Brix >22%) entro le prime 6 ore.
-- Decornazione: Entro 3-4 settimane con cauterizzazione termica, previa anestesia/analgesia.
-- Code: È vietato il taglio della coda.
+1. Formazione e Competenza del Personale
+La gestione degli animali è affidata esclusivamente a personale qualificato.
+Si provvede affinché tutti gli operatori ricevano una formazione adeguata, sia mediante partecipazione a corsi che mediante affiancamento con il Veterinario Aziendale, sulle corrette modalità di manipolazione, sul riconoscimento dei segni di malattia e sui principi di biosicurezza.
+È garantita l'ispezione di tutti gli animali presenti in allevamento almeno due volte al giorno (mattina e sera). Qualora si riscontrino animali feriti o con segni di sofferenza, si procede all'immediato isolamento e trattamento secondo i protocolli sanitari concordati con il Veterinario.
 
-3. Monitoraggio Indicatori (Animal Based)
-Si provvede al monitoraggio periodico di:
-- Body Condition Score (BCS).
-- Cleanliness Score (Pulizia).
-- Locomotion Score (Zoppie).
+2. Gestione della Vitellaia (0-6 Mesi)
+2.1 Colostratura e Alimentazione
+Si provvede alla somministrazione di colostro di alta qualità (verificato con rifrattometro Brix >22%) entro le prime 6 ore di vita, in quantità pari al 10% del peso vivo (circa 3-4 litri).
+L'acqua è sempre a disposizione, pulita e fresca, fin dalla prima settimana di vita.
+2.2 Alloggiamento
+I vitelli sono stabulati in box singoli (nel rispetto delle dimensioni di legge) fino a massimo 8 settimane di vita. Le pareti dei box sono forate per consentire il contatto visivo e tattile con i consimili (benessere sociale). Dopo le 8 settimane, i vitelli vengono spostati in box multipli.
 
-4. Strutture ed Emergenze
-Presenza di gruppo elettrogeno a riarmo automatico per ventilazione/mungitura e sistema di allarme."""
+3. Pratiche Zootecniche e Mutilazioni
+In conformità ai requisiti SNQBA, si attuano procedure per minimizzare il dolore.
+Decornazione: Si provvede alla decornazione dei vitelli entro la 3ª-4ª settimana di vita (bottone corneo mobile). L'intervento viene effettuato mediante cauterizzazione termica, previo utilizzo di anestesia locale (blocco del nervo cornuale) e somministrazione di analgesico/antinfiammatorio sistemico (FANS) per la gestione del dolore post-operatorio.
+Code: È vietato il taglio della coda (caudectomia).
+Movimentazione: È vietato l'uso di pungoli elettrici, bastoni o calci per spostare gli animali. Si utilizzano pannelli di spinta o movimenti corporei che sfruttano il comportamento naturale della mandria.
 
-CHECKLIST_DATA = [
-    ("Segnaletica", "Cartello divieto ingresso/norme biosicurezza presente al varco?"),
-    ("Cancello", "Il varco di accesso è chiuso/presidiato?"),
-    ("Parcheggio", "Auto visitatori parcheggiate in zona esterna (sporca)?"),
-    ("Registro", "Registro Ingressi compilato in ogni parte?"),
-    ("DPI", "Disponibili calzari/camici per visitatori?"),
-    ("Pest Control", "Erogatori integri e fissati al muro?"),
-    ("Pest Control", "Cartellino di segnalazione presente sopra le trappole?"),
-    ("Vitelli", "Acqua presente e pulita nei box?"),
-    ("Vitelli", "Contatto visivo garantito tra vitelli <8 settimane?"),
-    ("Farmaci", "Armadietto farmaci chiuso a chiave?"),
-    ("Documenti", "Report STUDIO SUMMIT SRL archiviati e disponibili?")
-]
+4. Monitoraggio Indicatori Animal-Based
+Si provvede al monitoraggio periodico (es. trimestrale o semestrale tramite ClassyFarm) dei seguenti indicatori di benessere direttamente sugli animali:
+- Body Condition Score (BCS): Per valutare lo stato nutrizionale.
+- Locomotion Score: Per rilevare precocemente zoppie.
+- Cleanliness Score: Per valutare l'igiene degli animali (mammella e arti).
+- Lesioni: Verifica assenza di lesioni cutanee, al garretto o al collo (indicatori di strutture inadeguate).
 
-# --- INTERFACCIA UTENTE ---
-st.title("Generatore Manuali | STUDIO SUMMIT")
+5. Gestione delle Emergenze
+L'azienda è dotata di gruppo elettrogeno a riarmo automatico per garantire il funzionamento degli impianti di mungitura, abbeverata e ventilazione anche in caso di blackout elettrico.
+È presente un sistema di allarme (SMS/telefonico) che segnala tempestivamente guasti critici."""
 
-with st.form("main_form"):
-    st.subheader("1. Anagrafica Cliente")
+# --- INTERFACCIA UTENTE (SIDEBAR & MAIN) ---
+st.title("R-ADVISOR-APP | Generatore Manuali")
+st.markdown("Compila i dati aziendali per generare il **Manuale di Corretta Prassi per Benessere e Biosicurezza**.")
+
+with st.form("data_entry_form"):
+    st.subheader("1. Anagrafica Azienda")
     col1, col2 = st.columns(2)
+    
     with col1:
-        ragione_sociale = st.text_input("Ragione Sociale")
-        indirizzo = st.text_input("Indirizzo")
-        codice_stalla = st.text_input("Codice Stalla")
+        ragione_sociale = st.text_input("Ragione Sociale / Nome Cliente")
+        indirizzo = st.text_input("Indirizzo Sede Operativa")
+        codice_stalla = st.text_input("Codice Stalla (ASL)")
+        telefono = st.text_input("Recapito Telefonico")
+    
     with col2:
-        piva = st.text_input("Partita IVA")
-        telefono = st.text_input("Telefono")
         email = st.text_input("Email")
+        veterinario = st.text_input("Veterinario Aziendale (Nome Cognome)")
+        resp_biosicurezza = st.text_input("Responsabile Biosicurezza")
+        resp_benessere = st.text_input("Responsabile Benessere")
+        data_attestato = st.date_input("Data Rilascio Attestato Benessere", datetime.date.today())
 
-    st.subheader("2. Responsabili")
-    c_resp1, c_resp2 = st.columns(2)
-    resp_bio = c_resp1.text_input("Resp. Biosicurezza")
-    resp_ben = c_resp2.text_input("Resp. Benessere")
-    data_corso = c_resp2.date_input("Data Attestato Benessere")
+    st.subheader("2. Personalizzazioni POS")
+    # Logica per POS 003
+    freq_pest_control = st.selectbox(
+        "Frequenza monitoraggio Pest Control (Ditta Esterna)", 
+        ["Quadrimestrale", "Bimestrale", "Mensile", "Semestrale"],
+        index=0 # Default Quadrimestrale
+    )
 
-    st.subheader("3. Variabili POS & Allegati")
-    freq_pest = st.selectbox("Frequenza Pest Control", ["quadrimestrale", "bimestrale", "mensile", "trimestrale"])
-    uploaded_planimetria = st.file_uploader("Carica Planimetria Trappole (JPG/PNG)", type=["jpg", "png", "jpeg"])
+    st.subheader("3. Allegati Specifici Cliente")
+    planimetria_file = st.file_uploader("Carica Planimetria Pest Control (Immagine JPG/PNG)", type=['png', 'jpg', 'jpeg'])
 
-    submitted = st.form_submit_button("GENERA PDF")
+    submitted = st.form_submit_button("GENERA MANUALE PDF")
 
 # --- LOGICA GENERAZIONE ---
 if submitted:
     if not ragione_sociale:
-        st.error("Inserire Ragione Sociale!")
+        st.error("Inserire almeno la Ragione Sociale per procedere.")
     else:
-        try:
-            pdf = PDF(ragione_sociale)
-            pdf.alias_nb_pages()
-            pdf.set_auto_page_break(auto=True, margin=15)
-            
-            # --- COPERTINA ---
-            pdf.add_page()
-            pdf.ln(50)
-            pdf.set_font("Helvetica", "B", 24)
-            pdf.multi_cell(0, 10, "MANUALE DI CORRETTA PRASSI\nPER BENESSERE E BIOSICUREZZA", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            pdf.ln(10)
-            
-            if os.path.exists("assets/cover.jpg"):
-                x_pos = (pdf.w - 140) / 2
-                pdf.image("assets/cover.jpg", x=x_pos, w=140)
-            
-            pdf.ln(20)
-            pdf.set_font("Helvetica", "B", 18)
-            pdf.cell(0, 10, ragione_sociale, align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            pdf.set_font("Helvetica", "", 12)
-            pdf.cell(0, 10, f"Codice Stalla: {codice_stalla}", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        # Costruzione del testo POS 003 DINAMICO
+        # Qui inseriamo il testo integrale ma usiamo f-string per la variabile frequenza
+        pos_003_text = f"""Scopo: Descrivere le misure di difesa passiva (Pest Proofing) e attiva (Pest Control) messe in atto dall'azienda per controllare la presenza di roditori, insetti e altri animali indesiderati, vettori di patologie e minaccia per la salubrità dei mangimi e il benessere animale.
+Riferimenti: Reg. (UE) 852/2004; Reg. (UE) 2016/429; SNQBA / ClassyFarm (Area Biosicurezza).
 
-            # --- PAGINA ANAGRAFICA ---
-            pdf.add_page()
-            pdf.chapter_title("SCHEDA ANAGRAFICA")
-            
+1. Responsabilità e Gestione del Servizio
+La gestione del piano di lotta agli infestanti è suddivisa tra il personale interno e una ditta specializzata esterna.
+Responsabile Biosicurezza (Interno): Sovrintende alla corretta applicazione delle misure di difesa passiva, segnala tempestivamente anomalie e archivia la documentazione.
+Ditta Specializzata (Esterno): Il servizio di monitoraggio e lotta attiva è affidato alla ditta STUDIO SUMMIT SRL (Iscritta ANID - Associazione Nazionale Imprese Disinfestazione). La ditta possiede i requisiti tecnico-professionali per la gestione dei presidi e l'uso di biocidi conformi alla normativa vigente.
+
+2. Pest Proofing (Difesa Passiva e Prevenzione)
+L'azienda attua sistematicamente misure strutturali e comportamentali volte a impedire l'ingresso e la nidificazione degli infestanti (esclusione). Nello specifico:
+
+2.1 Gestione Edifici e Strutture
+- Si mantengono integre le reti anti-passero e anti-insetto alle finestre.
+- Si verifica la tenuta delle porte e dei portoni (assenza di fessure inferiori > 5mm).
+- Si sigillano fori di passaggio tubature/cavi nelle murature.
+
+2.2 Gestione Ambientale Esterna
+- La vegetazione perimetrale è mantenuta rasata per non offrire rifugio ai roditori.
+- Si evita l'accumulo di materiali di scarto, rottami o rifiuti a ridosso delle pareti esterne delle stalle.
+- La zona di stoccaggio mangimi è mantenuta pulita da spandimenti accidentali.
+
+3. Pest Control (Lotta Attiva e Monitoraggio)
+Il piano di monitoraggio prevede l'installazione di postazioni fisse (erogatori di sicurezza) numerate e riportate in planimetria.
+Tipologia Postazioni:
+- Interno Stalle/Sale Latte: Trappole a cattura (meccaniche o collanti) o virtuali (monitoraggio tracce) senza uso di veleni, per evitare contaminazioni.
+- Esterno Perimetrale: Erogatori per esche rodenticide (in blocchi paraffinati fissati all'asta di sicurezza) conformi alla normativa Biocidi.
+
+Frequenza Interventi: Il monitoraggio viene effettuato da STUDIO SUMMIT SRL con cadenza {freq_pest_control.upper()}.
+In ogni caso, il numero di passaggi vengono modulati dalla ditta fornitrice in relazione al livello di infestazione effettivamente riscontrato durante i monitoraggi (soglia di tolleranza).
+
+4. Gestione Documentale e Planimetria
+Tutta l'attività di Pest Management è tracciata e documentata per garantire la rintracciabilità delle operazioni.
+Planimetria Dispositivi: È presente e aggiornata una mappa planimetrica dell'azienda (Allegato PM-01) che identifica univocamente la posizione di ogni erogatore (numerati progressivamente).
+Report di Intervento: Al termine di ogni visita, STUDIO SUMMIT SRL rilascia un rapporto di intervento che riporta:
+- Data e ora dell'intervento.
+- Prodotti utilizzati (nome commerciale, principio attivo, n. registrazione, lotto).
+- Esito del monitoraggio per ogni singola postazione (es. consumo: nullo, parziale, totale).
+- Eventuali "Non Conformità" rilevate o azioni correttive suggerite.
+Schede Tecniche e di Sicurezza: Sono archiviate e disponibili le SDS (Schede di Sicurezza) aggiornate di tutti i formulati chimici impiegati in azienda.
+
+5. Procedura di Emergenza (Avvistamento Interno)
+Qualora il personale aziendale rilevi la presenza di infestanti (roditori o insetti in massa) tra un controllo programmato e l'altro:
+- L'operatore segnala l'evento al Responsabile Biosicurezza.
+- Il Responsabile contatta immediatamente STUDIO SUMMIT SRL.
+- Viene attivato un intervento straordinario di verifica e trattamento entro i tempi concordati contrattualmente."""
+
+        # --- CREAZIONE PDF ---
+        pdf = PDF(ragione_sociale)
+        pdf.alias_nb_pages()
+        pdf.set_auto_page_break(auto=True, margin=15)
+
+        # 1. COPERTINA
+        pdf.add_page()
+        if os.path.exists("assets/cover.jpg"):
+            pdf.image("assets/cover.jpg", x=35, y=40, w=140)
+        
+        pdf.set_y(150)
+        pdf.set_font("Helvetica", "B", 24)
+        pdf.cell(0, 15, "MANUALE DI CORRETTA PRASSI", ln=True, align='C')
+        pdf.cell(0, 15, "PER BENESSERE E BIOSICUREZZA", ln=True, align='C')
+        pdf.ln(10)
+        pdf.set_font("Helvetica", "", 18)
+        pdf.cell(0, 15, ragione_sociale, ln=True, align='C')
+        
+        # 2. ANAGRAFICA
+        pdf.add_page()
+        pdf.chapter_title("SCHEDA ANAGRAFICA AZIENDALE")
+        pdf.set_font("Helvetica", "", 12)
+        
+        def add_row(label, value):
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.cell(80, 10, label, border=1)
             pdf.set_font("Helvetica", "", 11)
-            data = [
-                ("Ragione Sociale:", ragione_sociale),
-                ("Indirizzo:", indirizzo),
-                ("P.IVA:", piva),
-                ("Codice Stalla:", codice_stalla),
-                ("Contatti:", f"{telefono} {email}"),
-                ("Resp. Biosicurezza:", resp_bio),
-                ("Resp. Benessere:", resp_ben),
-                ("Data Corso:", data_corso.strftime("%d/%m/%Y"))
-            ]
-            
-            for key, val in data:
-                pdf.set_font("Helvetica", "B", 11)
-                pdf.cell(50, 8, key, border=1)
-                pdf.set_font("Helvetica", "", 11)
-                pdf.cell(0, 8, str(val), border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.cell(0, 10, str(value), border=1, ln=True)
 
-            # --- POS ---
-            pdf.add_page()
-            pdf.chapter_title("POS 001 - VISITATORI")
-            pdf.body_text(TXT_POS_001)
+        add_row("Ragione Sociale", ragione_sociale)
+        add_row("Indirizzo", indirizzo)
+        add_row("Codice Stalla", codice_stalla)
+        add_row("Telefono", telefono)
+        add_row("Email", email)
+        add_row("Veterinario Aziendale", veterinario)
+        add_row("Resp. Biosicurezza", resp_biosicurezza)
+        add_row("Resp. Benessere", resp_benessere)
+        add_row("Data Attestato Benessere", data_attestato.strftime("%d/%m/%Y"))
 
-            pdf.add_page()
-            pdf.chapter_title("POS 002 - QUARANTENA")
-            pdf.body_text(TXT_POS_002)
+        # 3. POS SECTIONS
+        pdf.add_page()
+        pdf.chapter_title("POS-BIO-01: GESTIONE E REGOLE VISITATORI ESTERNI")
+        pdf.chapter_body(POS_001_TEXT)
+        
+        pdf.add_page()
+        pdf.chapter_title("POS-BIO-02: GESTIONE E REGOLE QUARANTENA")
+        pdf.chapter_body(POS_002_TEXT)
+        
+        pdf.add_page()
+        pdf.chapter_title("POS-BIO-03: GESTIONE E REGOLE PEST MANAGEMENT")
+        pdf.chapter_body(pos_003_text) # Uso la variabile dinamica
+        
+        pdf.add_page()
+        pdf.chapter_title("POS-BIO-04: GESTIONE E REGOLE BENESSERE ANIMALE")
+        pdf.chapter_body(POS_004_TEXT)
 
-            pdf.add_page()
-            pdf.chapter_title("POS 003 - PEST MANAGEMENT")
-            pdf.body_text(TXT_POS_003_TEMPLATE.format(frequenza=freq_pest))
+        # 4. ALLEGATI
+        pdf.add_page()
+        pdf.chapter_title("SEZIONE ALLEGATI")
+        
+        # Allegato 1
+        pdf.ln(5)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 10, "ALLEGATO 1: CARTELLONISTICA VISITATORI", ln=True)
+        if os.path.exists("assets/cartello.jpg"):
+            pdf.image("assets/cartello.jpg", x=30, w=150)
+        
+        # Allegato 2
+        pdf.add_page()
+        pdf.cell(0, 10, "ALLEGATO 2: PLANIMETRIA PEST CONTROL", ln=True)
+        if planimetria_file is not None:
+            # Salviamo l'immagine in memoria invece che su disco
+            image_data = planimetria_file.read()
+            # Usiamo un file temporaneo per FPDF che a volte fatica con i flussi di byte diretti in alcune versioni
+            with open("temp_plan.png", "wb") as f:
+                f.write(image_data)
+            pdf.image("temp_plan.png", x=20, w=170)
+            os.remove("temp_plan.png")
+        else:
+            pdf.set_font("Helvetica", "I", 10)
+            pdf.cell(0, 10, "Nessuna planimetria caricata.", ln=True)
 
-            pdf.add_page()
-            pdf.chapter_title("POS 004 - BENESSERE")
-            pdf.body_text(TXT_POS_004)
+        # Allegato 3
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 10, "ALLEGATO 3: INFOGRAFICA BODY CONDITION SCORE (BCS)", ln=True)
+        if os.path.exists("assets/bcs.jpg"):
+            pdf.image("assets/bcs.jpg", x=20, w=170)
 
-            # --- ALLEGATI ---
-            pdf.add_page()
-            pdf.chapter_title("ALLEGATI")
-            
-            pdf.sub_title("1. Cartello Biosicurezza")
-            if os.path.exists("assets/cartello.jpg"):
-                pdf.image("assets/cartello.jpg", w=160, x=25)
-            
-            pdf.add_page()
-            pdf.sub_title("2. Planimetria Pest Control")
-            if uploaded_planimetria:
-                with open("temp_plan.jpg", "wb") as f:
-                    f.write(uploaded_planimetria.getbuffer())
-                pdf.image("temp_plan.jpg", w=170, x=20)
-            
-            pdf.add_page()
-            pdf.sub_title("3. Infografica BCS")
-            if os.path.exists("assets/bcs.jpg"):
-                pdf.image("assets/bcs.jpg", w=170, x=20)
-
-            # --- CHECKLIST ---
-            pdf.add_page()
-            pdf.chapter_title("CHECK LIST DI MONITORAGGIO")
-            pdf.set_fill_color(240, 240, 240)
-            pdf.set_font("Helvetica", "B", 10)
-            pdf.cell(40, 8, "Ambito", 1, 0, 'C', fill=True)
-            pdf.cell(110, 8, "Controllo", 1, 0, 'C', fill=True)
-            pdf.cell(40, 8, "Esito", 1, 1, 'C', fill=True)
-            
-            pdf.set_font("Helvetica", "", 10)
-            for area, check in CHECKLIST_DATA:
-                pdf.cell(40, 8, area, 1)
-                pdf.cell(110, 8, check, 1)
-                pdf.cell(40, 8, "", 1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-            # --- OUTPUT SICURO (FIX ERRORE BYTEARRAY) ---
-            # 1. Salviamo il file fisicamente su disco
-            output_filename = f"Manuale_{ragione_sociale.replace(' ', '_')}.pdf"
-            pdf.output("temp_manuale.pdf")
-            
-            # 2. Rileggiamo il file come BYTES puri (non bytearray)
-            with open("temp_manuale.pdf", "rb") as f:
-                pdf_data_bytes = f.read()
-            
-            st.success("✅ Documento generato con successo!")
-            st.download_button(
-                label="📥 SCARICA PDF FINALE",
-                data=pdf_data_bytes, # Ora passiamo bytes puri
-                file_name=output_filename,
-                mime="application/pdf"
-            )
-            
-        except Exception as e:
-            st.error(f"Errore: {e}")
-           
+        # Output del PDF
+        pdf_content = pdf.output(dest='S').encode('latin-1', 'replace')
+        
+        st.success("Manuale generato con successo!")
+        
+        filename = f"Manuale_Biosicurezza_{ragione_sociale.replace(' ', '_')}.pdf"
+        st.download_button(
+            label="SCARICA IL MANUALE PDF",
+            data=pdf_content,
+            file_name=filename,
+            mime="application/pdf"
+        )
