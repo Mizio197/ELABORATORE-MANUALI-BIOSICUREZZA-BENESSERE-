@@ -1,9 +1,26 @@
 import streamlit as st
 from fpdf import FPDF
 import datetime
-from PIL import Image
 import os
-import io
+
+# --- FUNZIONE PULIZIA TESTO (Per evitare errori di codifica Word -> PDF) ---
+def clean_text(text):
+    if text is None:
+        return ""
+    # Sostituzioni caratteri "Smart" di Word con caratteri standard Latin-1
+    replacements = {
+        u'\u2018': "'", u'\u2019': "'", # Virgolette singole curve
+        u'\u201c': '"', u'\u201d': '"', # Virgolette doppie curve
+        u'\u2013': '-', u'\u2014': '-', # Trattini lunghi
+        u'\u2026': '...',               # Puntini sospensione
+        u'\u00B0': ' gradi ',           # Simbolo grado (opzionale, latin-1 lo regge ma per sicurezza)
+        u'\u20ac': 'EUR',               # Simbolo Euro
+    }
+    for key, value in replacements.items():
+        text = text.replace(key, value)
+    
+    # Rimuove eventuali caratteri non compatibili con Latin-1
+    return text.encode('latin-1', 'replace').decode('latin-1')
 
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="R-ADVISOR Generator", page_icon="📄", layout="centered")
@@ -12,28 +29,32 @@ st.set_page_config(page_title="R-ADVISOR Generator", page_icon="📄", layout="c
 class PDF(FPDF):
     def __init__(self, client_name):
         super().__init__()
-        self.client_name = client_name
+        self.client_name = clean_text(client_name)
 
     def header(self):
-        # Logo Studio Summit a destra
+        # Logo Studio Summit a destra (Controllo esistenza file)
         if os.path.exists("assets/logo.png"):
-            self.image("assets/logo.png", x=160, y=10, w=40)
+            try:
+                self.image("assets/logo.png", x=160, y=10, w=40)
+            except:
+                pass # Se l'immagine è corrotta, ignora
         self.ln(20)
 
     def footer(self):
         self.set_y(-15)
         self.set_font("Helvetica", "I", 8)
         text = f"ELABORATO CON R-ADVISOR-APP da STUDIO SUMMIT SRL per {self.client_name} - Pagina {self.page_no()}/{{nb}}"
-        self.cell(0, 10, text, align="C")
+        self.cell(0, 10, clean_text(text), align="C")
 
     def chapter_title(self, label):
         self.set_font("Helvetica", "B", 14)
+        label = clean_text(label)
         self.cell(0, 10, label, ln=True, align='L')
         self.ln(5)
 
     def chapter_body(self, body):
         self.set_font("Helvetica", "", 11)
-        # multi_cell gestisce il testo lungo e l'allineamento giustificato ('J')
+        body = clean_text(body)
         self.multi_cell(0, 6, body, align='J') 
         self.ln()
 
@@ -43,12 +64,12 @@ POS_001_TEXT = """Scopo: Prevenire l'introduzione e la diffusione di agenti pato
 Riferimenti Normativi: Reg. UE 2016/429; Liste di controllo ClassyFarm/SNQBA.
 
 1. Classificazione del Rischio Visitatori
-Nelle more dell’analisi del rischio condotta per garantire una migliore efficacia delle attività di gestione ai fini della biosicurezza, si è provveduto a classificare in categorie gli stessi in differenti categorie:
+Nelle more dell'analisi del rischio condotta per garantire una migliore efficacia delle attività di gestione ai fini della biosicurezza, si è provveduto a classificare in categorie gli stessi in differenti categorie:
 
 Categoria A: Visitatori ad Alto Rischio (Professionali)
 Soggetti che, per la natura della loro attività, frequentano regolarmente più allevamenti o hanno contatti diretti con animali.
 Chi sono: Medici Veterinari, tecnici fecondatori, trasportatori di animali vivi, trasportatori di mangime (se entrano in zona pulita), tecnici manutentori di impianti zootecnici, pareggiatori, tosapecore, consulenti nutrizionisti.
-Requisito specifico: Devono dichiarare preliminarmente all’accesso eventuali contatto con animali infetti, animali di nuova introduzione in altri allevamenti e, più in generale, altri fattori di rischio, anche solo potenziale. Onere dell’operatore è la valutazione specifica di ogni singola dichiarazione di rischio.
+Requisito specifico: Devono dichiarare preliminarmente all'accesso eventuali contatto con animali infetti, animali di nuova introduzione in altri allevamenti e, più in generale, altri fattori di rischio, anche solo potenziale. Onere dell'operatore è la valutazione specifica di ogni singola dichiarazione di rischio.
 
 Categoria B: Visitatori a Medio/Basso Rischio
 Soggetti che non hanno contatti frequenti con altri allevamenti o che non accederanno alle zone di stabulazione diretta.
@@ -106,7 +127,7 @@ Caratteristiche:
 Si tratta di area dedicata a capi residenti (adulti o vitelli) che manifestano patologie (es. mastiti contagiose, zoppie gravi infette, sindromi respiratorie, diarree neonatali). Garantisce il benessere dell'animale malato (lettiera pulita, asciutta, spazio adeguato, facile accesso all'acqua).
 
 2. Procedura per Nuovi Ingressi (Quarantena)
-Questa procedura si applica a qualsiasi animale proveniente dall'esterno, prescindendo dall’età.
+Questa procedura si applica a qualsiasi animale proveniente dall'esterno, prescindendo dall'età.
 2.1 Fase Pre-Ingresso
 Si provvede a verifica dello stato sanitario dell'allevamento di provenienza (tramite Modello 4 e attestazioni sanitarie).
 
@@ -134,7 +155,7 @@ Ogni volta che un animale (o un gruppo omogeneo) in quarantena/isolamento viene 
 
 4.2 Gestione Letame
 La lettiera rimossa dall'area quarantena/isolamento NON viene distribuita direttamente sui campi o mischiata subito al letame "maturo".
-Tale lettiera viene stoccata in un punto dedicato della concimaia per subire un processo di biotermizzazione (compostaggio naturale che raggiunge >60°C) per inattivare virus e batteri prima dello spandimento agronomico.
+Tale lettiera viene stoccata in un punto dedicato della concimaia per subire un processo di biotermizzazione (compostaggio naturale che raggiunge >60 gradi C) per inattivare virus e batteri prima dello spandimento agronomico.
 
 5. Registrazione e Tracciabilità
 Per ogni animale in Quarantena/Isolamento si provvede a compilare la Scheda di Stalla/Cartella Clinica contenente:
@@ -161,7 +182,7 @@ I vitelli sono stabulati in box singoli (nel rispetto delle dimensioni di legge)
 
 3. Pratiche Zootecniche e Mutilazioni
 In conformità ai requisiti SNQBA, si attuano procedure per minimizzare il dolore.
-Decornazione: Si provvede alla decornazione dei vitelli entro la 3ª-4ª settimana di vita (bottone corneo mobile). L'intervento viene effettuato mediante cauterizzazione termica, previo utilizzo di anestesia locale (blocco del nervo cornuale) e somministrazione di analgesico/antinfiammatorio sistemico (FANS) per la gestione del dolore post-operatorio.
+Decornazione: Si provvede alla decornazione dei vitelli entro la 3a-4a settimana di vita (bottone corneo mobile). L'intervento viene effettuato mediante cauterizzazione termica, previo utilizzo di anestesia locale (blocco del nervo cornuale) e somministrazione di analgesico/antinfiammatorio sistemico (FANS) per la gestione del dolore post-operatorio.
 Code: È vietato il taglio della coda (caudectomia).
 Movimentazione: È vietato l'uso di pungoli elettrici, bastoni o calci per spostare gli animali. Si utilizzano pannelli di spinta o movimenti corporei che sfruttano il comportamento naturale della mandria.
 
@@ -216,7 +237,6 @@ if submitted:
         st.error("Inserire almeno la Ragione Sociale per procedere.")
     else:
         # Costruzione del testo POS 003 DINAMICO
-        # Qui inseriamo il testo integrale ma usiamo f-string per la variabile frequenza
         pos_003_text = f"""Scopo: Descrivere le misure di difesa passiva (Pest Proofing) e attiva (Pest Control) messe in atto dall'azienda per controllare la presenza di roditori, insetti e altri animali indesiderati, vettori di patologie e minaccia per la salubrità dei mangimi e il benessere animale.
 Riferimenti: Reg. (UE) 852/2004; Reg. (UE) 2016/429; SNQBA / ClassyFarm (Area Biosicurezza).
 
@@ -264,103 +284,115 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
 - Viene attivato un intervento straordinario di verifica e trattamento entro i tempi concordati contrattualmente."""
 
         # --- CREAZIONE PDF ---
-        pdf = PDF(ragione_sociale)
-        pdf.alias_nb_pages()
-        pdf.set_auto_page_break(auto=True, margin=15)
+        # Blocco Try/Except per catturare qualsiasi errore residuo
+        try:
+            pdf = PDF(ragione_sociale)
+            pdf.alias_nb_pages()
+            pdf.set_auto_page_break(auto=True, margin=15)
 
-        # 1. COPERTINA
-        pdf.add_page()
-        if os.path.exists("assets/cover.jpg"):
-            pdf.image("assets/cover.jpg", x=35, y=40, w=140)
-        
-        pdf.set_y(150)
-        pdf.set_font("Helvetica", "B", 24)
-        pdf.cell(0, 15, "MANUALE DI CORRETTA PRASSI", ln=True, align='C')
-        pdf.cell(0, 15, "PER BENESSERE E BIOSICUREZZA", ln=True, align='C')
-        pdf.ln(10)
-        pdf.set_font("Helvetica", "", 18)
-        pdf.cell(0, 15, ragione_sociale, ln=True, align='C')
-        
-        # 2. ANAGRAFICA
-        pdf.add_page()
-        pdf.chapter_title("SCHEDA ANAGRAFICA AZIENDALE")
-        pdf.set_font("Helvetica", "", 12)
-        
-        def add_row(label, value):
-            pdf.set_font("Helvetica", "B", 11)
-            pdf.cell(80, 10, label, border=1)
-            pdf.set_font("Helvetica", "", 11)
-            pdf.cell(0, 10, str(value), border=1, ln=True)
+            # 1. COPERTINA
+            pdf.add_page()
+            if os.path.exists("assets/cover.jpg"):
+                pdf.image("assets/cover.jpg", x=35, y=40, w=140)
+            
+            pdf.set_y(150)
+            pdf.set_font("Helvetica", "B", 24)
+            pdf.cell(0, 15, clean_text("MANUALE DI CORRETTA PRASSI"), ln=True, align='C')
+            pdf.cell(0, 15, clean_text("PER BENESSERE E BIOSICUREZZA"), ln=True, align='C')
+            pdf.ln(10)
+            pdf.set_font("Helvetica", "", 18)
+            pdf.cell(0, 15, clean_text(ragione_sociale), ln=True, align='C')
+            
+            # 2. ANAGRAFICA
+            pdf.add_page()
+            pdf.chapter_title("SCHEDA ANAGRAFICA AZIENDALE")
+            pdf.set_font("Helvetica", "", 12)
+            
+            def add_row(label, value):
+                pdf.set_font("Helvetica", "B", 11)
+                pdf.cell(80, 10, clean_text(label), border=1)
+                pdf.set_font("Helvetica", "", 11)
+                pdf.cell(0, 10, clean_text(str(value)), border=1, ln=True)
 
-        add_row("Ragione Sociale", ragione_sociale)
-        add_row("Indirizzo", indirizzo)
-        add_row("Codice Stalla", codice_stalla)
-        add_row("Telefono", telefono)
-        add_row("Email", email)
-        add_row("Veterinario Aziendale", veterinario)
-        add_row("Resp. Biosicurezza", resp_biosicurezza)
-        add_row("Resp. Benessere", resp_benessere)
-        add_row("Data Attestato Benessere", data_attestato.strftime("%d/%m/%Y"))
+            add_row("Ragione Sociale", ragione_sociale)
+            add_row("Indirizzo", indirizzo)
+            add_row("Codice Stalla", codice_stalla)
+            add_row("Telefono", telefono)
+            add_row("Email", email)
+            add_row("Veterinario Aziendale", veterinario)
+            add_row("Resp. Biosicurezza", resp_biosicurezza)
+            add_row("Resp. Benessere", resp_benessere)
+            add_row("Data Attestato Benessere", data_attestato.strftime("%d/%m/%Y"))
 
-        # 3. POS SECTIONS
-        pdf.add_page()
-        pdf.chapter_title("POS-BIO-01: GESTIONE E REGOLE VISITATORI ESTERNI")
-        pdf.chapter_body(POS_001_TEXT)
-        
-        pdf.add_page()
-        pdf.chapter_title("POS-BIO-02: GESTIONE E REGOLE QUARANTENA")
-        pdf.chapter_body(POS_002_TEXT)
-        
-        pdf.add_page()
-        pdf.chapter_title("POS-BIO-03: GESTIONE E REGOLE PEST MANAGEMENT")
-        pdf.chapter_body(pos_003_text) # Uso la variabile dinamica
-        
-        pdf.add_page()
-        pdf.chapter_title("POS-BIO-04: GESTIONE E REGOLE BENESSERE ANIMALE")
-        pdf.chapter_body(POS_004_TEXT)
+            # 3. POS SECTIONS
+            pdf.add_page()
+            pdf.chapter_title("POS-BIO-01: GESTIONE E REGOLE VISITATORI ESTERNI")
+            pdf.chapter_body(POS_001_TEXT)
+            
+            pdf.add_page()
+            pdf.chapter_title("POS-BIO-02: GESTIONE E REGOLE QUARANTENA")
+            pdf.chapter_body(POS_002_TEXT)
+            
+            pdf.add_page()
+            pdf.chapter_title("POS-BIO-03: GESTIONE E REGOLE PEST MANAGEMENT")
+            pdf.chapter_body(pos_003_text)
+            
+            pdf.add_page()
+            pdf.chapter_title("POS-BIO-04: GESTIONE E REGOLE BENESSERE ANIMALE")
+            pdf.chapter_body(POS_004_TEXT)
 
-        # 4. ALLEGATI
-        pdf.add_page()
-        pdf.chapter_title("SEZIONE ALLEGATI")
-        
-        # Allegato 1
-        pdf.ln(5)
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 10, "ALLEGATO 1: CARTELLONISTICA VISITATORI", ln=True)
-        if os.path.exists("assets/cartello.jpg"):
-            pdf.image("assets/cartello.jpg", x=30, w=150)
-        
-        # Allegato 2
-        pdf.add_page()
-        pdf.cell(0, 10, "ALLEGATO 2: PLANIMETRIA PEST CONTROL", ln=True)
-        if planimetria_file is not None:
-            # Salviamo l'immagine in memoria invece che su disco
-            image_data = planimetria_file.read()
-            # Usiamo un file temporaneo per FPDF che a volte fatica con i flussi di byte diretti in alcune versioni
-            with open("temp_plan.png", "wb") as f:
-                f.write(image_data)
-            pdf.image("temp_plan.png", x=20, w=170)
-            os.remove("temp_plan.png")
-        else:
-            pdf.set_font("Helvetica", "I", 10)
-            pdf.cell(0, 10, "Nessuna planimetria caricata.", ln=True)
+            # 4. ALLEGATI
+            pdf.add_page()
+            pdf.chapter_title("SEZIONE ALLEGATI")
+            
+            # Allegato 1
+            pdf.ln(5)
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.cell(0, 10, "ALLEGATO 1: CARTELLONISTICA VISITATORI", ln=True)
+            if os.path.exists("assets/cartello.jpg"):
+                pdf.image("assets/cartello.jpg", x=30, w=150)
+            else:
+                pdf.set_font("Helvetica", "I", 10)
+                pdf.cell(0, 10, "(Immagine cartello.jpg non trovata in assets)", ln=True)
+            
+            # Allegato 2
+            pdf.add_page()
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.cell(0, 10, "ALLEGATO 2: PLANIMETRIA PEST CONTROL", ln=True)
+            if planimetria_file is not None:
+                image_data = planimetria_file.read()
+                with open("temp_plan.png", "wb") as f:
+                    f.write(image_data)
+                pdf.image("temp_plan.png", x=20, w=170)
+                os.remove("temp_plan.png")
+            else:
+                pdf.set_font("Helvetica", "I", 10)
+                pdf.cell(0, 10, "Nessuna planimetria caricata.", ln=True)
 
-        # Allegato 3
-        pdf.add_page()
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 10, "ALLEGATO 3: INFOGRAFICA BODY CONDITION SCORE (BCS)", ln=True)
-        if os.path.exists("assets/bcs.jpg"):
-            pdf.image("assets/bcs.jpg", x=20, w=170)
+            # Allegato 3
+            pdf.add_page()
+            pdf.set_font("Helvetica", "B", 12)
+            pdf.cell(0, 10, "ALLEGATO 3: INFOGRAFICA BODY CONDITION SCORE (BCS)", ln=True)
+            if os.path.exists("assets/bcs.jpg"):
+                pdf.image("assets/bcs.jpg", x=20, w=170)
+            else:
+                pdf.set_font("Helvetica", "I", 10)
+                pdf.cell(0, 10, "(Immagine bcs.jpg non trovata in assets)", ln=True)
 
-        # Output del PDF
-        pdf_content = pdf.output(dest='S').encode('latin-1', 'replace')
-        
-        st.success("Manuale generato con successo!")
-        
-        filename = f"Manuale_Biosicurezza_{ragione_sociale.replace(' ', '_')}.pdf"
-        st.download_button(
-            label="SCARICA IL MANUALE PDF",
-            data=pdf_content,
-            file_name=filename,
-            mime="application/pdf"
-        )
+            # Output del PDF
+            # Usiamo un metodo più sicuro per FPDF2 moderno
+            pdf_content = pdf.output(dest='S').encode('latin-1', 'replace')
+            
+            st.success("Manuale generato con successo!")
+            
+            filename = f"Manuale_Biosicurezza_{ragione_sociale.replace(' ', '_')}.pdf"
+            st.download_button(
+                label="SCARICA IL MANUALE PDF",
+                data=pdf_content,
+                file_name=filename,
+                mime="application/pdf"
+            )
+            
+        except Exception as e:
+            st.error(f"Errore durante la generazione del PDF: {e}")
+            st.error("Suggerimento: Controlla che le immagini nella cartella 'assets' siano .jpg o .png e che non siano corrotte.")
