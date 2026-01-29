@@ -1,5 +1,6 @@
 import streamlit as st
 from fpdf import FPDF
+from fpdf.fonts import FontFace # Import necessario per la correzione
 import os
 from datetime import datetime
 
@@ -34,13 +35,12 @@ class PDF(FPDF):
         self.ln(2)
 
     def section_body(self, text):
-        self.set_font("Arial", "", 11) # Usa "Arial" o carica un font custom
+        self.set_font("Arial", "", 11)
         self.set_text_color(0)
         self.multi_cell(0, 6, text, align='J') # J = Justified
         self.ln(5)
 
 # --- TESTI STATICI (POS) ---
-# Nota: Ho estratto il testo dai tuoi file. Puoi modificarli qui direttamente.
 
 TEXT_POS_001 = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni all'interno dell'unità epidemiologica tramite vettori meccanici.
 Riferimenti Normativi: Reg. UE 2016/429; Liste di controllo ClassyFarm/SNQBA.
@@ -78,7 +78,6 @@ Gestione:
 3. Gestione Letame
 La lettiera della quarantena viene stoccata separatamente per biotermizzazione (>60°C) prima dello spandimento."""
 
-# Questo testo contiene un placeholder {frequenza} per la personalizzazione
 TEXT_POS_003_TEMPLATE = """Scopo: Descrivere le misure di difesa passiva (Pest Proofing) e attiva (Pest Control) contro infestanti.
 Riferimenti: Reg. (UE) 852/2004; SNQBA.
 
@@ -210,10 +209,12 @@ if submitted:
             ("Data Attestato Benessere", data_corso_ben.strftime("%d/%m/%Y"))
         ]
         
+        # TABELLA CORRETTA CON FontFace
         with pdf.table() as table:
             for row in info_data:
                 r = table.row()
-                r.cell(row[0], style="B") # Grassetto per etichetta
+                # Uso FontFace per il grassetto invece della stringa "B"
+                r.cell(row[0], style=FontFace(emphasis="BOLD")) 
                 r.cell(row[1])
 
         # --- POS 001 VISITATORI ---
