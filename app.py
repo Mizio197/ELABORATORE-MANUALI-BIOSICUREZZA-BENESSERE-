@@ -8,12 +8,12 @@ import tempfile
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="R-ADVISOR Generator", page_icon="📄", layout="centered")
 
-# --- FUNZIONE PULIZIA TESTO ---
+# --- 1. FUNZIONE PULIZIA TESTO (Preventiva per caratteri Word) ---
 def clean_text(text):
     if text is None: return ""
     text = str(text)
     
-    # 1. Sostituzioni caratteri Word
+    # Mappa manuale dei caratteri Word più comuni che creano problemi
     replacements = {
         u'\u2018': "'", u'\u2019': "'", u'\u201c': '"', u'\u201d': '"',
         u'\u2013': '-', u'\u2014': '-', u'\u2026': '...', 
@@ -23,16 +23,20 @@ def clean_text(text):
     for key, value in replacements.items():
         text = text.replace(key, value)
     
-    # 2. Forza Latin-1 (sostituisce caratteri impossibili con ?)
+    # Forza la codifica Latin-1: se trova un carattere impossibile (es. emoji), mette un '?'
+    # Questo impedisce il crash del PDF
     return text.encode('latin-1', 'replace').decode('latin-1')
 
-# --- FUNZIONE IMMAGINE SICURA ---
+# --- 2. FUNZIONE IMMAGINE SICURA (Anti-Crash per Loghi e Foto) ---
 def get_safe_image_path(original_path):
+    # Se il file non esiste, ritorna None
     if not os.path.exists(original_path):
         return None
+    
     try:
         img = Image.open(original_path)
-        # Rimuovi trasparenza convertendo in RGB
+        
+        # Converte tutto in RGB (rimuove trasparenze che fanno crashare i PDF)
         if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
             bg = Image.new("RGB", img.size, (255, 255, 255))
             bg.paste(img, mask=img.convert('RGBA').split()[-1])
@@ -40,20 +44,22 @@ def get_safe_image_path(original_path):
         else:
             img = img.convert('RGB')
         
-        # Salva temporaneamente
+        # Salva in un file temporaneo .jpg
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             img.save(tmp, format='JPEG', quality=90)
             return tmp.name
     except Exception as e:
+        # Se l'immagine è corrotta, la ignora invece di bloccare tutto
         return None
 
-# --- CLASSE PDF ---
+# --- 3. CLASSE PDF ---
 class PDF(FPDF):
     def __init__(self, client_name):
         super().__init__()
         self.client_name = clean_text(client_name)
 
     def header(self):
+        # Carica il logo in modo sicuro
         safe_logo = get_safe_image_path("assets/logo.png")
         if safe_logo:
             try:
@@ -77,7 +83,7 @@ class PDF(FPDF):
         self.multi_cell(0, 6, clean_text(body), align='J') 
         self.ln()
 
-# --- DEFINIZIONE TESTI INTEGRALI ---
+# --- 4. TESTI INTEGRALI (POS) ---
 
 POS_001_TEXT = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni (virus, batteri, parassiti) all'interno dell'unita' epidemiologica tramite vettori meccanici (veicoli, persone, attrezzature).
 Riferimenti Normativi: Reg. UE 2016/429; Liste di controllo ClassyFarm/SNQBA.
@@ -216,9 +222,9 @@ Si provvede al monitoraggio periodico (es. trimestrale o semestrale tramite Clas
 L'azienda e' dotata di gruppo elettrogeno a riarmo automatico per garantire il funzionamento degli impianti di mungitura, abbeverata e ventilazione anche in caso di blackout elettrico.
 E' presente un sistema di allarme (SMS/telefonico) che segnala tempestivamente guasti critici."""
 
-# --- INTERFACCIA UTENTE ---
+# --- 5. INTERFACCIA UTENTE ---
 st.title("R-ADVISOR-APP | Generatore Manuali")
-st.success("Sistema Pronto e Attivo.")
+st.success("Sistema Caricato. Compila i dati.")
 
 with st.form("data_entry_form"):
     st.subheader("1. Anagrafica Azienda")
@@ -246,7 +252,7 @@ with st.form("data_entry_form"):
 
     submitted = st.form_submit_button("GENERA MANUALE PDF")
 
-# --- LOGICA GENERAZIONE ---
+# --- 6. LOGICA GENERAZIONE ---
 if submitted:
     if not ragione_sociale:
         st.error("Inserire almeno la Ragione Sociale per procedere.")
@@ -366,6 +372,9 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             safe_cartello = get_safe_image_path("assets/cartello.jpg")
             if safe_cartello:
                 pdf.image(safe_cartello, x=30, w=150)
+            else:
+                pdf.set_font("Helvetica", "I", 10)
+                pdf.cell(0, 10, "Immagine cartello non trovata (controlla nome file)", ln=True)
             
             pdf.add_page()
             pdf.cell(0, 10, "ALLEGATO 2: PLANIMETRIA PEST CONTROL", ln=True)
@@ -389,10 +398,13 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             safe_bcs = get_safe_image_path("assets/bcs.jpg")
             if safe_bcs:
                 pdf.image(safe_bcs, x=20, w=170)
+            else:
+                pdf.set_font("Helvetica", "I", 10)
+                pdf.cell(0, 10, "Immagine BCS non trovata", ln=True)
 
             # --- GENERAZIONE OUTPUT DEFINITIVA ---
-            # fpdf2 restituisce già un bytearray, lo passiamo direttamente.
-            pdf_content = pdf.output(dest='S')
+            # CORREZIONE: output() restituisce già bytearray, NON bisogna fare .encode()
+            pdf_content = pdf.output()
             
             st.success("Manuale generato con successo!")
             filename = f"Manuale_Biosicurezza_{ragione_sociale.replace(' ', '_')}.pdf"
@@ -404,4 +416,4 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             )
             
         except Exception as e:
-            st.error(f"Errore: {e}")
+            st.error(f"Errore tecnico: {e}")
