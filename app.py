@@ -1,6 +1,6 @@
 import streamlit as st
 from fpdf import FPDF
-from fpdf.fonts import FontFace # Import necessario per la correzione
+from fpdf.fonts import FontFace # Import necessario per le tabelle
 import os
 from datetime import datetime
 
@@ -178,7 +178,6 @@ if submitted:
         
         # Immagine Copertina (Centrata)
         if os.path.exists("assets/cover.jpg"):
-            # Calcolo posizione x per centrare un'immagine larga 150
             page_width = pdf.w
             img_width = 150
             x_pos = (page_width - img_width) / 2
@@ -213,7 +212,6 @@ if submitted:
         with pdf.table() as table:
             for row in info_data:
                 r = table.row()
-                # Uso FontFace per il grassetto invece della stringa "B"
                 r.cell(row[0], style=FontFace(emphasis="BOLD")) 
                 r.cell(row[1])
 
@@ -255,7 +253,6 @@ if submitted:
         pdf.add_page()
         pdf.cell(0, 10, "2. PLANIMETRIA PEST CONTROL (Mappa Trappole)", ln=True)
         if uploaded_planimetria:
-            # Salvataggio temporaneo per FPDF
             temp_path = "temp_planimetria.jpg"
             with open(temp_path, "wb") as f:
                 f.write(uploaded_planimetria.getbuffer())
@@ -271,11 +268,17 @@ if submitted:
         if os.path.exists("assets/bcs.jpg"):
             pdf.image("assets/bcs.jpg", w=170, x=20)
 
-        # Output del file
-        pdf_filename = f"Manuale_Biosicurezza_{ragione_sociale.replace(' ', '_')}.pdf"
+        # Output del file - SOLUZIONE ERRORE STREAMLIT
+        # Salviamo su un file temporaneo invece di usare output() diretto
+        temp_pdf_path = "manuale_temp.pdf"
+        pdf.output(temp_pdf_path)
         
-        # Salvataggio byte array per il download
-        pdf_bytes = pdf.output()
+        # Leggiamo il file come binario puro
+        with open(temp_pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+
+        # Generiamo il nome del file finale
+        pdf_filename = f"Manuale_Biosicurezza_{ragione_sociale.replace(' ', '_')}.pdf"
         
         st.success("✅ Manuale generato con successo!")
         
