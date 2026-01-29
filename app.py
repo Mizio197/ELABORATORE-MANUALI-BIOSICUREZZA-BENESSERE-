@@ -3,7 +3,6 @@ from fpdf import FPDF
 from fpdf.fonts import FontFace
 from fpdf.enums import XPos, YPos
 import os
-import io
 
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="R-ADVISOR | Generatore Manuali", page_icon="📋", layout="wide")
@@ -51,7 +50,7 @@ class PDF(FPDF):
         self.set_text_color(50, 50, 50)
         self.cell(0, 8, label, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
 
-# --- TESTI COMPLETI (DAI TUOI FILE) ---
+# --- TESTI COMPLETI ---
 
 TXT_POS_001 = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni (virus, batteri, parassiti) all'interno dell'unità epidemiologica tramite vettori meccanici (veicoli, persone, attrezzature).
 Riferimenti Normativi: Reg. UE 2016/429; Liste di controllo ClassyFarm/SNQBA.
@@ -135,7 +134,6 @@ Si provvede al monitoraggio periodico di:
 4. Strutture ed Emergenze
 Presenza di gruppo elettrogeno a riarmo automatico per ventilazione/mungitura e sistema di allarme."""
 
-# --- DATI CHECKLIST (Ricostruita dal file Excel) ---
 CHECKLIST_DATA = [
     ("Segnaletica", "Cartello divieto ingresso/norme biosicurezza presente al varco?"),
     ("Cancello", "Il varco di accesso è chiuso/presidiato?"),
@@ -208,7 +206,6 @@ if submitted:
             pdf.add_page()
             pdf.chapter_title("SCHEDA ANAGRAFICA")
             
-            # Tabella Anagrafica semplice con celle
             pdf.set_font("Helvetica", "", 11)
             data = [
                 ("Ragione Sociale:", ragione_sociale),
@@ -227,22 +224,19 @@ if submitted:
                 pdf.set_font("Helvetica", "", 11)
                 pdf.cell(0, 8, str(val), border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-            # --- POS 001 ---
+            # --- POS ---
             pdf.add_page()
             pdf.chapter_title("POS 001 - VISITATORI")
             pdf.body_text(TXT_POS_001)
 
-            # --- POS 002 ---
             pdf.add_page()
             pdf.chapter_title("POS 002 - QUARANTENA")
             pdf.body_text(TXT_POS_002)
 
-            # --- POS 003 ---
             pdf.add_page()
             pdf.chapter_title("POS 003 - PEST MANAGEMENT")
             pdf.body_text(TXT_POS_003_TEMPLATE.format(frequenza=freq_pest))
 
-            # --- POS 004 ---
             pdf.add_page()
             pdf.chapter_title("POS 004 - BENESSERE")
             pdf.body_text(TXT_POS_004)
@@ -251,63 +245,54 @@ if submitted:
             pdf.add_page()
             pdf.chapter_title("ALLEGATI")
             
-            # 1. Cartello
             pdf.sub_title("1. Cartello Biosicurezza")
             if os.path.exists("assets/cartello.jpg"):
                 pdf.image("assets/cartello.jpg", w=160, x=25)
-            else:
-                pdf.body_text("[Immagine Cartello non trovata]")
             
-            # 2. Planimetria
             pdf.add_page()
             pdf.sub_title("2. Planimetria Pest Control")
             if uploaded_planimetria:
-                # Salva temporaneamente il file caricato
                 with open("temp_plan.jpg", "wb") as f:
                     f.write(uploaded_planimetria.getbuffer())
                 pdf.image("temp_plan.jpg", w=170, x=20)
-            else:
-                pdf.body_text("[Nessuna Planimetria Caricata]")
-
-            # 3. BCS
+            
             pdf.add_page()
             pdf.sub_title("3. Infografica BCS")
             if os.path.exists("assets/bcs.jpg"):
                 pdf.image("assets/bcs.jpg", w=170, x=20)
-            else:
-                pdf.body_text("[Immagine BCS non trovata]")
 
-            # --- CHECKLIST FINALE ---
+            # --- CHECKLIST ---
             pdf.add_page()
             pdf.chapter_title("CHECK LIST DI MONITORAGGIO")
-            pdf.body_text("Da compilare con cadenza periodica.")
-            pdf.ln(5)
-            
-            # Intestazione Tabella
             pdf.set_fill_color(240, 240, 240)
             pdf.set_font("Helvetica", "B", 10)
             pdf.cell(40, 8, "Ambito", 1, 0, 'C', fill=True)
             pdf.cell(110, 8, "Controllo", 1, 0, 'C', fill=True)
-            pdf.cell(40, 8, "Esito (C/NC)", 1, 1, 'C', fill=True) # 1 finale va a capo
+            pdf.cell(40, 8, "Esito", 1, 1, 'C', fill=True)
             
-            # Righe
             pdf.set_font("Helvetica", "", 10)
             for area, check in CHECKLIST_DATA:
                 pdf.cell(40, 8, area, 1)
                 pdf.cell(110, 8, check, 1)
                 pdf.cell(40, 8, "", 1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-            # --- OUTPUT ---
-            # Metodo più sicuro per Streamlit: output su bytearray
-            pdf_bytes = pdf.output()
+            # --- OUTPUT SICURO (FIX ERRORE BYTEARRAY) ---
+            # 1. Salviamo il file fisicamente su disco
+            output_filename = f"Manuale_{ragione_sociale.replace(' ', '_')}.pdf"
+            pdf.output("temp_manuale.pdf")
+            
+            # 2. Rileggiamo il file come BYTES puri (non bytearray)
+            with open("temp_manuale.pdf", "rb") as f:
+                pdf_data_bytes = f.read()
             
             st.success("✅ Documento generato con successo!")
             st.download_button(
                 label="📥 SCARICA PDF FINALE",
-                data=pdf_bytes,
-                file_name=f"Manuale_{ragione_sociale.replace(' ', '_')}.pdf",
+                data=pdf_data_bytes, # Ora passiamo bytes puri
+                file_name=output_filename,
                 mime="application/pdf"
             )
             
         except Exception as e:
-            st.error(f"Si è verificato un errore durante la generazione: {e}")
+            st.error(f"Errore: {e}")
+           
