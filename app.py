@@ -3,41 +3,52 @@ from fpdf import FPDF
 import datetime
 import os
 
-# --- FUNZIONE PULIZIA TESTO (Per evitare errori di codifica Word -> PDF) ---
+# --- FUNZIONE PULIZIA TESTO ---
 def clean_text(text):
-    if text is None:
-        return ""
-    # Sostituzioni caratteri "Smart" di Word con caratteri standard Latin-1
+    if text is None: return ""
     replacements = {
-        u'\u2018': "'", u'\u2019': "'", # Virgolette singole curve
-        u'\u201c': '"', u'\u201d': '"', # Virgolette doppie curve
-        u'\u2013': '-', u'\u2014': '-', # Trattini lunghi
-        u'\u2026': '...',               # Puntini sospensione
-        u'\u00B0': ' gradi ',           # Simbolo grado (opzionale, latin-1 lo regge ma per sicurezza)
-        u'\u20ac': 'EUR',               # Simbolo Euro
+        u'\u2018': "'", u'\u2019': "'", u'\u201c': '"', u'\u201d': '"',
+        u'\u2013': '-', u'\u2014': '-', u'\u2026': '...', u'\u00B0': ' gradi ',
+        u'\u20ac': 'EUR',
     }
     for key, value in replacements.items():
         text = text.replace(key, value)
-    
-    # Rimuove eventuali caratteri non compatibili con Latin-1
     return text.encode('latin-1', 'replace').decode('latin-1')
 
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="R-ADVISOR Generator", page_icon="📄", layout="centered")
 
-# --- CLASSE PDF PERSONALIZZATA ---
+# --- DIAGNOSTICA FILE (PER CAPIRE L'ERRORE) ---
+with st.sidebar:
+    st.header("🔍 DIAGNOSTICA FILES")
+    st.write("Controllo se il server vede i tuoi file:")
+    
+    if os.path.exists("assets"):
+        st.success("Cartella 'assets' TROVATA")
+        files_in_assets = os.listdir("assets")
+        st.write("File trovati dentro assets:", files_in_assets)
+        
+        # Check specifici
+        required_files = ["logo.png", "cover.jpg", "cartello.jpg", "bcs.jpg"]
+        for f in required_files:
+            if f in files_in_assets:
+                st.write(f"✅ {f} ok")
+            else:
+                st.error(f"❌ {f} MANCANTE o nome diverso (controlla maiuscole!)")
+    else:
+        st.error("❌ Cartella 'assets' NON TROVATA. Controlla su GitHub.")
+
+# --- CLASSE PDF ---
 class PDF(FPDF):
     def __init__(self, client_name):
         super().__init__()
         self.client_name = clean_text(client_name)
 
     def header(self):
-        # Logo Studio Summit a destra (Controllo esistenza file)
-        if os.path.exists("assets/logo.png"):
-            try:
-                self.image("assets/logo.png", x=160, y=10, w=40)
-            except:
-                pass # Se l'immagine è corrotta, ignora
+        # Percorso esatto verificato
+        logo_path = "assets/logo.png"
+        if os.path.exists(logo_path):
+            self.image(logo_path, x=160, y=10, w=40)
         self.ln(20)
 
     def footer(self):
@@ -48,18 +59,15 @@ class PDF(FPDF):
 
     def chapter_title(self, label):
         self.set_font("Helvetica", "B", 14)
-        label = clean_text(label)
-        self.cell(0, 10, label, ln=True, align='L')
+        self.cell(0, 10, clean_text(label), ln=True, align='L')
         self.ln(5)
 
     def chapter_body(self, body):
         self.set_font("Helvetica", "", 11)
-        body = clean_text(body)
-        self.multi_cell(0, 6, body, align='J') 
+        self.multi_cell(0, 6, clean_text(body), align='J') 
         self.ln()
 
-# --- DEFINIZIONE TESTI INTEGRALI (POS) ---
-
+# --- TESTI POS INTEGRALI ---
 POS_001_TEXT = """Scopo: Prevenire l'introduzione e la diffusione di agenti patogeni (virus, batteri, parassiti) all'interno dell'unità epidemiologica tramite vettori meccanici (veicoli, persone, attrezzature).
 Riferimenti Normativi: Reg. UE 2016/429; Liste di controllo ClassyFarm/SNQBA.
 
@@ -197,20 +205,18 @@ Si provvede al monitoraggio periodico (es. trimestrale o semestrale tramite Clas
 L'azienda è dotata di gruppo elettrogeno a riarmo automatico per garantire il funzionamento degli impianti di mungitura, abbeverata e ventilazione anche in caso di blackout elettrico.
 È presente un sistema di allarme (SMS/telefonico) che segnala tempestivamente guasti critici."""
 
-# --- INTERFACCIA UTENTE (SIDEBAR & MAIN) ---
+# --- INTERFACCIA UTENTE ---
 st.title("R-ADVISOR-APP | Generatore Manuali")
 st.markdown("Compila i dati aziendali per generare il **Manuale di Corretta Prassi per Benessere e Biosicurezza**.")
 
 with st.form("data_entry_form"):
     st.subheader("1. Anagrafica Azienda")
     col1, col2 = st.columns(2)
-    
     with col1:
         ragione_sociale = st.text_input("Ragione Sociale / Nome Cliente")
         indirizzo = st.text_input("Indirizzo Sede Operativa")
         codice_stalla = st.text_input("Codice Stalla (ASL)")
         telefono = st.text_input("Recapito Telefonico")
-    
     with col2:
         email = st.text_input("Email")
         veterinario = st.text_input("Veterinario Aziendale (Nome Cognome)")
@@ -219,11 +225,9 @@ with st.form("data_entry_form"):
         data_attestato = st.date_input("Data Rilascio Attestato Benessere", datetime.date.today())
 
     st.subheader("2. Personalizzazioni POS")
-    # Logica per POS 003
     freq_pest_control = st.selectbox(
         "Frequenza monitoraggio Pest Control (Ditta Esterna)", 
-        ["Quadrimestrale", "Bimestrale", "Mensile", "Semestrale"],
-        index=0 # Default Quadrimestrale
+        ["Quadrimestrale", "Bimestrale", "Mensile", "Semestrale"], index=0
     )
 
     st.subheader("3. Allegati Specifici Cliente")
@@ -236,7 +240,7 @@ if submitted:
     if not ragione_sociale:
         st.error("Inserire almeno la Ragione Sociale per procedere.")
     else:
-        # Costruzione del testo POS 003 DINAMICO
+        # Costruzione POS 003 DINAMICO
         pos_003_text = f"""Scopo: Descrivere le misure di difesa passiva (Pest Proofing) e attiva (Pest Control) messe in atto dall'azienda per controllare la presenza di roditori, insetti e altri animali indesiderati, vettori di patologie e minaccia per la salubrità dei mangimi e il benessere animale.
 Riferimenti: Reg. (UE) 852/2004; Reg. (UE) 2016/429; SNQBA / ClassyFarm (Area Biosicurezza).
 
@@ -283,8 +287,6 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
 - Il Responsabile contatta immediatamente STUDIO SUMMIT SRL.
 - Viene attivato un intervento straordinario di verifica e trattamento entro i tempi concordati contrattualmente."""
 
-        # --- CREAZIONE PDF ---
-        # Blocco Try/Except per catturare qualsiasi errore residuo
         try:
             pdf = PDF(ragione_sociale)
             pdf.alias_nb_pages()
@@ -324,7 +326,7 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             add_row("Resp. Benessere", resp_benessere)
             add_row("Data Attestato Benessere", data_attestato.strftime("%d/%m/%Y"))
 
-            # 3. POS SECTIONS
+            # 3. SEZIONI POS
             pdf.add_page()
             pdf.chapter_title("POS-BIO-01: GESTIONE E REGOLE VISITATORI ESTERNI")
             pdf.chapter_body(POS_001_TEXT)
@@ -345,19 +347,13 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             pdf.add_page()
             pdf.chapter_title("SEZIONE ALLEGATI")
             
-            # Allegato 1
             pdf.ln(5)
             pdf.set_font("Helvetica", "B", 12)
             pdf.cell(0, 10, "ALLEGATO 1: CARTELLONISTICA VISITATORI", ln=True)
             if os.path.exists("assets/cartello.jpg"):
                 pdf.image("assets/cartello.jpg", x=30, w=150)
-            else:
-                pdf.set_font("Helvetica", "I", 10)
-                pdf.cell(0, 10, "(Immagine cartello.jpg non trovata in assets)", ln=True)
             
-            # Allegato 2
             pdf.add_page()
-            pdf.set_font("Helvetica", "B", 12)
             pdf.cell(0, 10, "ALLEGATO 2: PLANIMETRIA PEST CONTROL", ln=True)
             if planimetria_file is not None:
                 image_data = planimetria_file.read()
@@ -369,22 +365,16 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
                 pdf.set_font("Helvetica", "I", 10)
                 pdf.cell(0, 10, "Nessuna planimetria caricata.", ln=True)
 
-            # Allegato 3
             pdf.add_page()
             pdf.set_font("Helvetica", "B", 12)
             pdf.cell(0, 10, "ALLEGATO 3: INFOGRAFICA BODY CONDITION SCORE (BCS)", ln=True)
             if os.path.exists("assets/bcs.jpg"):
                 pdf.image("assets/bcs.jpg", x=20, w=170)
-            else:
-                pdf.set_font("Helvetica", "I", 10)
-                pdf.cell(0, 10, "(Immagine bcs.jpg non trovata in assets)", ln=True)
 
-            # Output del PDF
-            # Usiamo un metodo più sicuro per FPDF2 moderno
+            # Output PDF
             pdf_content = pdf.output(dest='S').encode('latin-1', 'replace')
             
             st.success("Manuale generato con successo!")
-            
             filename = f"Manuale_Biosicurezza_{ragione_sociale.replace(' ', '_')}.pdf"
             st.download_button(
                 label="SCARICA IL MANUALE PDF",
@@ -394,5 +384,5 @@ Qualora il personale aziendale rilevi la presenza di infestanti (roditori o inse
             )
             
         except Exception as e:
-            st.error(f"Errore durante la generazione del PDF: {e}")
-            st.error("Suggerimento: Controlla che le immagini nella cartella 'assets' siano .jpg o .png e che non siano corrotte.")
+            st.error(f"ERRORE CRITICO: {e}")
+            st.warning("Se l'errore parla di 'Image not found', controlla la sezione Diagnostica qui a sinistra.")
